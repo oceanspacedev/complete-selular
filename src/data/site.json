@@ -1,0 +1,152 @@
+{
+  "name": "Complete Selular",
+  "whatsapp": "6281121101168",
+  "since": 2009,
+  "branchCount": "60+",
+  "rating": { "score": 4.9, "count": 2432, "source": "Google" },
+  "logo": { "src": "/img/site/logo-cs-1-057a45.webp", "w": 480, "h": 96 },
+  "logoAlt": { "src": "/img/site/logo-complete-selular-250x50-e6819e.webp", "w": 250, "h": 50 },
+  "hero": [
+    {
+      "768": { "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-768.webp", "w": 768, "h": 261 },
+      "1600": { "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-1600.webp", "w": 1600, "h": 544 }
+    }
+  ],
+  "brandLogos": {
+    "tecno": { "src": "/img/brands/brand_tecno-1-5x-b2e027.webp", "w": 240, "h": 108 },
+    "itel": { "src": "/img/brands/brand_itel-1-5x-2b7dd5.webp", "w": 240, "h": 108 },
+    "zte": { "src": "/img/brands/brand_zte-1-5x-c9bd83.webp", "w": 240, "h": 108 },
+    "xiaomi": { "src": "/img/brands/brand_xiaomi-1-5x-1b03bd.webp", "w": 240, "h": 108 },
+    "vivo": { "src": "/img/brands/brand_vivo-1-5x-f6671f.webp", "w": 240, "h": 108 },
+    "samsung": { "src": "/img/brands/brand_samsung-1-5x-64d0ae.webp", "w": 240, "h": 108 },
+    "realme": { "src": "/img/brands/brand_realme-1-5x-c25b7a.webp", "w": 240, "h": 108 },
+    "oppo": { "src": "/img/brands/brand_oppo-1-5x-bf7e78.webp", "w": 240, "h": 108 },
+    "nokia": { "src": "/img/brands/brand_nokia-1-5x-23dd0a.webp", "w": 240, "h": 108 },
+    "infinix": { "src": "/img/brands/brand_infinix-1-5x-74769a.webp", "w": 240, "h": 108 },
+    "asus": { "src": "/img/brands/brand_asus-1-5x-850271.webp", "w": 240, "h": 108 },
+    "apple": { "src": "/img/brands/brand_apple-1-5x-a620e1.webp", "w": 240, "h": 108 },
+    "mito": { "src": "/img/brands/brand_mito-1-5x-29a288.webp", "w": 240, "h": 108 },
+    "hotwav": { "src": "/img/brands/brand_hotwav-1-5x-cac2ee.webp", "w": 240, "h": 108 },
+    "advan": { "src": "/img/brands/brand_advan-1-5x-7df7b5.webp", "w": 240, "h": 108 }
+  },
+  "payments": [
+    { "name": "kredivo", "img": { "src": "/img/partners/kredivo-1-5x-5b19f5.webp", "w": 240, "h": 127 } },
+    { "name": "akulaku", "img": { "src": "/img/partners/akulaku-1-5x-d14e09.webp", "w": 240, "h": 73 } },
+    { "name": "spaylater", "img": { "src": "/img/partners/spaylater-1-5x-3666bc.webp", "w": 240, "h": 127 } },
+    { "name": "homecredit", "img": { "src": "/img/partners/homecredit-1-5x-1180a4.webp", "w": 240, "h": 127 } },
+    { "name": "blibliinstore", "img": { "src": "/img/partners/blibliinstore-1-5x-3d8256.webp", "w": 240, "h": 83 } },
+    { "name": "baf", "img": { "src": "/img/partners/baf-1-5x-b78f84.webp", "w": 240, "h": 161 } },
+    { "name": "travelokaspayl", "img": { "src": "/img/partners/travelokaspayl-1-5x-c0cf37.webp", "w": 240, "h": 118 } },
+    { "name": "samsungfplus", "img": { "src": "/img/partners/samsungfplus-1-5x-3547bc.webp", "w": 240, "h": 127 } }
+  ],
+  "marketplaces": [
+    {
+      "name": "Tokopedia",
+      "url": "https://www.tokopedia.com/complete-selular/product",
+      "img": { "src": "/img/partners/tokopedia-38840-e1649216083523-2b00a0.webp", "w": 100, "h": 32 }
+    },
+    {
+      "name": "Shopee",
+      "url": "https://shopee.co.id/complete.selular",
+      "img": { "src": "/img/partners/shopee-logo-31408-768x249-d373a9.webp", "w": 320, "h": 104 }
+    },
+    {
+      "name": "Lazada",
+      "url": "https://www.lazada.co.id/shop/completeselular1629968371",
+      "img": { "src": "/img/partners/lazada-logo-e1654760235744-3d77c1.webp", "w": 258, "h": 209 }
+    },
+    {
+      "name": "Blibli",
+      "url": "https://www.blibli.com/merchant/complete-selular/COR-70000",
+      "img": { "src": "/img/partners/blibli-com_-e1654761063228-fe5223.webp", "w": 93, "h": 31 }
+    },
+    {
+      "name": "TikTok Shop",
+      "url": "https://www.tiktok.com/@officialcompleteselular",
+      "img": { "src": "/img/partners/tiktok_logo-1ae90b.webp", "w": 320, "h": 93 }
+    }
+  ],
+  "socials": [
+    { "name": "instagram", "url": "https://www.instagram.com/officialcompleteselular/" },
+    { "name": "facebook", "url": "https://www.facebook.com/officialcompleteseluler/" },
+    { "name": "youtube", "url": "https://www.youtube.com/channel/UCVIvTp186hbzgDwlRC-3U5g" },
+    { "name": "tiktok", "url": "https://www.tiktok.com/@officialcompleteselular" }
+  ],
+  "featured": [
+    "apple-iphone-18-pro-max-2tb",
+    "apple-iphone-18-pro-max-1tb",
+    "apple-iphone-18-pro-max-512gb",
+    "apple-iphone-18-pro-max-256gb",
+    "apple-iphone-18-pro-2tb",
+    "apple-iphone-18-pro-1tb",
+    "infinix-smart-10-plus-8gb-128gb",
+    "samsung-s26-12-256",
+    "ipad-mini-7-wifi-256gb",
+    "oppo-reno7-5g",
+    "vivo-y28-6gb-128gb-4g-6000mah",
+    "oppo-a5-8gb-128gb",
+    "samsung-s25-plus-12-256-gb",
+    "samsung-galaxy-a55-a556-12gb-256gb-5g",
+    "tecno-pop-5-lte-2gb-32gb",
+    "oppo-reno-16f-5g-8-128-gb",
+    "motorola-moto-g57-power-5g-8-256gb",
+    "ipad-pro-13-8th-gen-m5cell-2tb"
+  ],
+  "about": {
+    "tagline": "Complete Selular merupakan perusahaan penyedia jasa layanan telekomunikasi yang terbaik, terlengkap dan berkualitas.",
+    "intro": "Sejak didirikan pada tahun 2009, Complete Selular telah tumbuh menjadi salah satu perusahaan penyedia jasa layanan Telekomunikasi & Aksesoris Handphone terkemuka yang telah tersebar di lebih dari 60 cabang toko seluruh wilayah Indonesia. Complete Selular telah menemani masyarakat Indonesia melalui berbagai produk smartphone dan aksesoris berkualitas dengan harga yang kompetitif.",
+    "vision": "Menjadi perusahaan penyedia jasa layanan telekomunikasi yang terbaik dan berkualitas pelayanannya di seluruh dunia.",
+    "missions": [
+      "Menjadikan kerja sebagai ibadah ikhlas",
+      "Menjual produk yang berkualitas dengan harga kompetitif untuk kepuasan konsumen",
+      "Memberikan pelayanan yang terbaik dan memuaskan bagi pelanggan dan mitra perusahaan",
+      "Memberikan keuntungan yang berkesinambungan bagi perusahaan",
+      "Mengembangkan SDM yang unggul dan berkualitas yang berkarakter positif, jujur, cerdas, disiplin dan bertanggung jawab",
+      "Menciptakan budaya organisasi yang unggul",
+      "Memberikan manfaat bagi masyarakat, bangsa dan negara"
+    ],
+    "values": ["Bersahabat", "Orisinil", "Terkini"],
+    "image": { "src": "/img/site/tentangkami-329a97.webp", "w": 900, "h": 625 }
+  },
+  "promos": {
+    "howTo": "https://wa.link/ayi59x",
+    "items": [
+      {
+        "thumb": { "src": "/img/promos/3-4fe55e-480.webp", "w": 480, "h": 724 },
+        "full": { "src": "/img/promos/3-4fe55e-1200.webp", "w": 1200, "h": 1809 }
+      },
+      {
+        "thumb": { "src": "/img/promos/cs_ketupat_promo-1-a3535f-480.webp", "w": 480, "h": 724 },
+        "full": { "src": "/img/promos/cs_ketupat_promo-1-a3535f-1200.webp", "w": 1200, "h": 1809 }
+      },
+      {
+        "thumb": { "src": "/img/promos/cs-2-baret-scaled-d39cb5-480.webp", "w": 480, "h": 724 },
+        "full": { "src": "/img/promos/cs-2-baret-scaled-d39cb5-1200.webp", "w": 1200, "h": 1809 }
+      },
+      {
+        "thumb": { "src": "/img/promos/promo-november-f1ce34-480.webp", "w": 480, "h": 679 },
+        "full": { "src": "/img/promos/promo-november-f1ce34-1200.webp", "w": 1131, "h": 1600 }
+      },
+      {
+        "thumb": { "src": "/img/promos/promo-november-cs-1f9bb8-480.webp", "w": 480, "h": 679 },
+        "full": { "src": "/img/promos/promo-november-cs-1f9bb8-1200.webp", "w": 1131, "h": 1600 }
+      },
+      {
+        "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-05-b95cd1-480.webp", "w": 480, "h": 679 },
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-05-b95cd1-1200.webp", "w": 1131, "h": 1600 }
+      },
+      {
+        "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-00-b6a480-480.webp", "w": 480, "h": 679 },
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-00-b6a480-1200.webp", "w": 1131, "h": 1600 }
+      },
+      {
+        "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-02-3d94af-480.webp", "w": 480, "h": 679 },
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-02-3d94af-1200.webp", "w": 1131, "h": 1599 }
+      },
+      {
+        "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-03-74246c-480.webp", "w": 480, "h": 678 },
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-03-74246c-1200.webp", "w": 1132, "h": 1599 }
+      }
+    ]
+  }
+}

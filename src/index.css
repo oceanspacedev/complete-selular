@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Brand blue, matched to the Complete Selular logo */
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e8ff;
+  --color-brand-200: #bbd7ff;
+  --color-brand-300: #8bbdff;
+  --color-brand-400: #5498fd;
+  --color-brand-500: #2d74f6;
+  --color-brand-600: #1757e0;
+  --color-brand-700: #1145bd;
+  --color-brand-800: #123b96;
+  --color-brand-900: #0b2a66;
+  --color-brand-950: #071a40;
+
+  /* Red from the logo mark — promos and badges only */
+  --color-accent-500: #e5252f;
+  --color-accent-600: #c81822;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px -4px rgb(15 23 42 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 32px -8px rgb(23 87 224 / 0.18);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-slate-50 font-sans text-slate-800 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  :focus-visible {
+    @apply outline-brand-500 outline-2 outline-offset-2;
+  }
+}
+
+@utility container-page {
+  @apply mx-auto w-full max-w-[1200px] px-4 sm:px-6;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility card {
+  @apply rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-900/5;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand-600 hover:bg-brand-700 text-white;
+}
+
+@utility btn-ghost {
+  @apply btn hover:text-brand-700 bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50;
+}
+
+@utility btn-wa {
+  @apply btn bg-[#25d366] text-white hover:bg-[#1ebe5b];
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition-colors;
+}
+
+/* Article body from WordPress */
+.prose-cs {
+  @apply text-[17px] leading-8 text-slate-700;
+  & h2 {
+    @apply mt-10 mb-3 text-2xl font-bold tracking-tight text-slate-900;
+  }
+  & h3 {
+    @apply mt-8 mb-2 text-xl font-bold text-slate-900;
+  }
+  & p {
+    @apply my-4;
+  }
+  & a {
+    @apply text-brand-700 decoration-brand-200 hover:decoration-brand-500 font-medium underline underline-offset-2;
+  }
+  & img {
+    @apply my-6 h-auto w-full rounded-2xl;
+  }
+  & ul {
+    @apply my-4 list-disc pl-6;
+  }
+  & ol {
+    @apply my-4 list-decimal pl-6;
+  }
+  & li {
+    @apply my-1;
+  }
+  & strong {
+    @apply font-semibold text-slate-900;
+  }
+  & figure {
+    @apply my-6;
+  }
+  & table {
+    @apply my-6 w-full text-sm;
+  }
+  & td,
+  & th {
+    @apply border border-slate-200 px-3 py-2;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 37%, #eef2f7 63%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "brands": [
+    { "name": "Advan", "slug": "advan", "total": 9, "count": 9 },
+    { "name": "Apple", "slug": "apple", "total": 161, "count": 14 },
+    { "name": "ASUS", "slug": "asus", "total": 4, "count": 4 },
+    { "name": "Honor", "slug": "honor", "total": 3, "count": 3 },
+    { "name": "Hotwav", "slug": "hotwav", "total": 4, "count": 4 },
+    { "name": "Huawei", "slug": "huawei", "total": 13, "count": 12 },
+    { "name": "Infinix", "slug": "infinix", "total": 104, "count": 13 },
+    { "name": "Itel", "slug": "itel", "total": 39, "count": 12 },
+    { "name": "Mito", "slug": "mito", "total": 1, "count": 1 },
+    { "name": "Motorola", "slug": "motorola", "total": 13, "count": 12 },
+    { "name": "Nokia", "slug": "nokia", "total": 9, "count": 9 },
+    { "name": "Oppo", "slug": "oppo", "total": 131, "count": 15 },
+    { "name": "Realme", "slug": "realme", "total": 130, "count": 12 },
+    { "name": "Samsung", "slug": "samsung", "total": 225, "count": 15 },
+    { "name": "Tecno", "slug": "tecno", "total": 66, "count": 13 },
+    { "name": "Vivo", "slug": "vivo", "total": 135, "count": 13 },
+    { "name": "Xiaomi", "slug": "xiaomi", "total": 148, "count": 12 },
+    { "name": "ZTE", "slug": "zte", "total": 28, "count": 12 }
+  ],
+  "categories": [{ "name": "Mobiles", "slug": "mobiles", "count": 185 }]
+}

@@ -1,12 +1,13 @@
-import { SearchX } from 'lucide-react'
-export default function EmptyState({ title, children }) {
+// A short bold title, one line of explanation and the way out, in a plain white card.
+//   as       heading element; h2 by default so pages never skip from h1 to h3
+//   actions  buttons/links rendered under the message — never leave the user at a dead end
+//   icon     accepted for older callers, no longer drawn
+export default function EmptyState({ title, as: Heading = 'h2', actions, children }) {
   return (
-    <div className="card flex flex-col items-center px-6 py-16 text-center">
-      <span className="bg-brand-50 text-brand-600 mb-4 grid size-14 place-items-center rounded-full">
-        <SearchX className="size-7" />
-      </span>
-      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-      {children && <div className="mt-2 text-slate-600">{children}</div>}
+    <div className="card flex flex-col items-center px-4 py-8 text-center sm:py-10">
+      <Heading className="text-ink text-base font-extrabold text-balance">{title}</Heading>
+      {children && <div className="text-muted mt-1 max-w-md text-sm text-pretty">{children}</div>}
+      {actions && <div className="mt-4 flex flex-wrap justify-center gap-2">{actions}</div>}
     </div>
   )
 }

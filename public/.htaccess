@@ -1,5 +1,16 @@
 # Complete Selular — React build on cPanel/Apache
-Options -MultiViews
+# `npm run build` writes a folder with an index.html for every page (scripts/prerender.mjs),
+# plus 404.html, sitemap.xml and robots.txt.
+Options -MultiViews -Indexes
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+
+# Prerendered pages live in folders (/katalog -> katalog/index.html). Without this Apache
+# would answer /katalog with a 301 to /katalog/, a URL that differs from the canonical.
+<IfModule mod_dir.c>
+  DirectorySlash Off
+</IfModule>
+
 RewriteEngine On
 
 # Force HTTPS
@@ -10,14 +21,53 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 RewriteRule ^semua-produk/?$ /katalog [L,R=301]
 RewriteRule ^seputar-gadgets/?$ /artikel-review [L,R=301]
 
-# Single-page app: serve real files, send everything else to index.html
-RewriteCond %{REQUEST_FILENAME} -f [OR]
+# A phone listed twice with the same RAM/storage is shown once; the other listing's URL moves
+# to the one kept. scripts/prerender.mjs fills in one rule per listing between these markers.
+# @duplicate-listings
+# @end-duplicate-listings
+
+# One URL per page: /katalog/ -> /katalog (WordPress links ended in a slash)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.+)/$ /$1 [L,R=301]
+
+# Home page
+RewriteRule ^$ index.html [L]
+
+# Prerendered page: serve <folder>/index.html in place
 RewriteCond %{REQUEST_FILENAME} -d
+RewriteCond %{REQUEST_FILENAME}/index.html -f
+RewriteRule ^(.+)$ $1/index.html [L]
+
+# Real files (build assets, data, images, sitemap…)
+RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
+
+# A missing data file, image or build asset is a real 404, never the app shell
+# (the app tells "product does not exist" apart from "offline" by this status).
+RewriteRule ^(assets|data|img)(/|$) - [R=404,L]
+
+# Any other URL is unknown (removed WordPress pages, typos): answer with the app shell and a
+# real 404 status (ErrorDocument above) so search engines drop it. If the build skipped the
+# prerender step, there is no 404.html and no page folders, so fall back to the plain SPA shell.
+RewriteCond %{DOCUMENT_ROOT}/404.html -f
+RewriteRule ^ - [R=404,L]
 RewriteRule ^ index.html [L]
 
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+  AddType application/manifest+json .webmanifest
+  AddType image/webp .webp
+  AddType font/woff2 .woff2
+  AddCharset utf-8 .html .css .js .mjs .json .webmanifest .xml .txt
+</IfModule>
+
+# Compression. Hosts disagree on the JS type (text/javascript vs application/javascript), so
+# list both; brotli first where the host has it, deflate skips anything already encoded.
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/css text/xml text/javascript application/javascript application/x-javascript application/json application/ld+json application/manifest+json application/xml image/svg+xml image/x-icon
+</IfModule>
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml text/javascript application/javascript application/x-javascript application/json application/ld+json application/manifest+json application/xml image/svg+xml image/x-icon
 </IfModule>
 
 <IfModule mod_expires.c>
@@ -25,9 +75,13 @@ RewriteRule ^ index.html [L]
   ExpiresDefault "access plus 1 hour"
   ExpiresByType text/html "access plus 0 seconds"
   ExpiresByType application/json "access plus 1 hour"
+  ExpiresByType application/manifest+json "access plus 1 week"
   ExpiresByType image/webp "access plus 1 year"
   ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
   ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
   ExpiresByType text/css "access plus 1 year"
 </IfModule>
@@ -37,7 +91,12 @@ RewriteRule ^ index.html [L]
   <FilesMatch "\.(js|css|woff2)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "index\.html$">
+  # Icons and the share image keep their names when redesigned, so don't pin them for a year
+  <FilesMatch "^(favicon|apple-touch-icon|icon-\d+)\.png$|^og-default\.jpg$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  # Every page (and 404.html) must pick up a new deploy right away
+  <FilesMatch "\.html$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 </IfModule>

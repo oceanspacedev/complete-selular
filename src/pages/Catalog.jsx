@@ -1,225 +1,519 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { Check, ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import { brands, categories } from '../data/brands.json'
-import { useProducts } from '../lib/data'
+import { useModels } from '../lib/data'
+import { waLink } from '../lib/wa'
 import { GridSkeleton, ProductGrid } from '../components/ProductCard'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
+import ErrorState from '../components/ErrorState'
+import Dialog from '../components/Dialog'
+import { WhatsAppIcon } from '../components/icons'
 import Seo from '../components/Seo'
 
 const PRICE_RANGES = [
-  { id: 'u2', label: '< 2 jt', min: 0, max: 2e6 },
-  { id: '2-5', label: '2 – 5 jt', min: 2e6, max: 5e6 },
-  { id: '5-10', label: '5 – 10 jt', min: 5e6, max: 10e6 },
-  { id: '10-20', label: '10 – 20 jt', min: 10e6, max: 20e6 },
-  { id: 'o20', label: '> 20 jt', min: 20e6, max: Infinity },
+  { id: 'u2', label: 'Di bawah 2 juta', min: 0, max: 2e6 },
+  { id: '2-5', label: '2 – 5 juta', min: 2e6, max: 5e6 },
+  { id: '5-10', label: '5 – 10 juta', min: 5e6, max: 10e6 },
+  { id: '10-20', label: '10 – 20 juta', min: 10e6, max: 20e6 },
+  { id: 'o20', label: 'Di atas 20 juta', min: 20e6, max: Infinity },
 ]
 
+// Models without a price always sink to the end
 const SORTS = [
-  { id: 'new', label: 'Terbaru' },
-  { id: 'price-asc', label: 'Harga terendah' },
-  { id: 'price-desc', label: 'Harga tertinggi' },
-  { id: 'name', label: 'Nama A–Z' },
+  { id: 'new', label: 'Terbaru', compare: (a, b) => (b.date ?? '').localeCompare(a.date ?? '') },
+  {
+    id: 'price-asc',
+    label: 'Harga terendah',
+    compare: (a, b) => (a.minPrice ?? Infinity) - (b.minPrice ?? Infinity) || 0,
+  },
+  { id: 'price-desc', label: 'Harga tertinggi', compare: (a, b) => (b.maxPrice ?? -1) - (a.maxPrice ?? -1) },
+  { id: 'name', label: 'Nama A–Z', compare: (a, b) => a.name.localeCompare(b.name, 'id') },
 ]
 
+// URL parameter for each filter, so every state is shareable and survives Back
+const KEYS = { q: 'q', brand: 'brand', category: 'kategori', price: 'harga', sort: 'urut' }
+const SHOWN = 'tampil'
 const PAGE = 20
 
-export function filterProducts(products, { q, brand, category, price, sort }) {
+// A listing is found by its full name (capacity included, e.g. "8/256") and its brand, so a name
+// copied from a marketplace still finds the phone
+const haystacks = new WeakMap()
+function haystack(m) {
+  if (!haystacks.has(m)) {
+    const parts = [m.name, m.brandName]
+    haystacks.set(m, parts.filter(Boolean).join(' ').toLowerCase())
+  }
+  return haystacks.get(m)
+}
+
+// Brand is checked last, so the brand chips can show how many models each one would leave with
+// the current search and price
+function filterModels(models, { q, brand, category, price, sort }) {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
   const range = PRICE_RANGES.find((r) => r.id === price)
-  const list = products.filter((p) => {
-    if (brand && p.brand !== brand) return false
-    if (category && p.category !== category) return false
-    if (range && !(p.price && p.price >= range.min && p.price < range.max)) return false
-    if (words.length) {
-      const hay = `${p.name} ${p.brandName ?? ''}`.toLowerCase()
-      if (!words.every((w) => hay.includes(w))) return false
-    }
-    return true
-  })
-  // Products without a price always sink to the end
-  if (sort === 'price-asc') list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity) || 0)
-  else if (sort === 'price-desc') list.sort((a, b) => (b.price ?? -1) - (a.price ?? -1))
-  else if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name))
-  return list
+  const brandCounts = {}
+  const results = []
+  for (const m of models) {
+    if (category && m.category !== category) continue
+    if (range && !(m.minPrice && m.minPrice >= range.min && m.minPrice < range.max)) continue
+    if (words.length && !words.every((w) => haystack(m).includes(w))) continue
+    brandCounts[m.brand] = (brandCounts[m.brand] ?? 0) + 1
+    if (!brand || m.brand === brand) results.push(m)
+  }
+  results.sort(SORTS.find((s) => s.id === sort).compare)
+  return { results, brandCounts }
+}
+
+function setOrDelete(params, key, value) {
+  if (value) params.set(key, value)
+  else params.delete(key)
 }
 
 export default function Catalog() {
-  const { data: products } = useProducts()
+  const { data: models, error, retry } = useModels()
   const [params, setParams] = useSearchParams()
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [limit, setLimit] = useState(PAGE)
+  const panelId = useId()
 
+  const sortParam = params.get(KEYS.sort)
   const f = {
-    q: params.get('q') ?? '',
-    brand: params.get('brand') ?? '',
-    category: params.get('kategori') ?? '',
-    price: params.get('harga') ?? '',
-    sort: params.get('urut') ?? 'new',
+    q: params.get(KEYS.q) ?? '',
+    brand: params.get(KEYS.brand) ?? '',
+    category: params.get(KEYS.category) ?? '',
+    price: params.get(KEYS.price) ?? '',
+    sort: SORTS.some((s) => s.id === sortParam) ? sortParam : 'new',
   }
-  const keyOf = { brand: 'brand', category: 'kategori', price: 'harga', sort: 'urut', q: 'q' }
+  // "Tampilkan lebih banyak" progress lives in the URL so Back from a product restores it
+  const shown = Math.max(PAGE, parseInt(params.get(SHOWN), 10) || PAGE)
 
-  const update = (key, value) => {
-    const next = new URLSearchParams(params)
-    if (!value || (key === 'sort' && value === 'new')) next.delete(keyOf[key])
-    else next.set(keyOf[key], value)
+  // Timers and focus requests outlive a render, so they read the latest params from a ref
+  const paramsRef = useRef(params)
+  paramsRef.current = params
+  const countRef = useRef(null)
+  const chipsRef = useRef(null)
+  const gridRef = useRef(null)
+  const resultsRef = useRef(null)
+  const pendingFocus = useRef(null)
+  const scrollToResults = useRef(false)
+  const retried = useRef(false)
+  const sortPushed = useRef(false)
+
+  // Discrete changes (chips, sort, reset) push history so Back undoes them one by one
+  // (The search itself is typed in the header's search field, which navigates here with ?q=)
+  const apply = (changes, { replace = false } = {}) => {
+    const next = new URLSearchParams(paramsRef.current)
+    for (const [key, value] of Object.entries(changes)) {
+      setOrDelete(next, KEYS[key], key === 'sort' && value === 'new' ? '' : value)
+    }
+    next.delete(SHOWN)
+    scrollToResults.current = !filtersOpen
+    setParams(next, { replace })
+  }
+
+  const clearFilters = { brand: '', category: '', price: '' }
+  // Every reset leaves its button behind, so focus lands on the result count
+  const reset = (changes) => {
+    pendingFocus.current = { count: true }
+    apply(changes)
+  }
+
+  const showMore = () => {
+    pendingFocus.current = { card: shown }
+    const next = new URLSearchParams(paramsRef.current)
+    next.set(SHOWN, String(shown + PAGE))
     setParams(next, { replace: true })
-    setLimit(PAGE)
   }
 
-  const results = useMemo(
-    () => (products ? filterProducts(products, f) : []),
-    [products, f.q, f.brand, f.category, f.price, f.sort],
+  // Runs after every render that was asked to move focus or scroll
+  useEffect(() => {
+    const request = pendingFocus.current
+    pendingFocus.current = null
+    if (request?.card != null) {
+      // First newly loaded card, so keyboard users continue where the new items start
+      gridRef.current?.querySelectorAll('article')[request.card]?.querySelector('a')?.focus()
+    } else if (request) {
+      // The removed chip is gone: move to its neighbour, or to the result count when none remain
+      const chips = chipsRef.current?.querySelectorAll('[data-remove]') ?? []
+      const target = (!request.count && chips[Math.min(request.chip, chips.length - 1)]) || countRef.current
+      target?.focus({ preventScroll: true })
+    }
+    if (scrollToResults.current) {
+      scrollToResults.current = false
+      // After a filter change far down the grid, bring the top of the new results back into view
+      if (resultsRef.current && resultsRef.current.getBoundingClientRect().top < 0) {
+        resultsRef.current.scrollIntoView({ block: 'start' })
+      }
+    }
+  })
+
+  // "Coba lagi" unmounts itself, which drops focus to <body>. Once the retry settles, land on the
+  // result count, or back on the retry button if it failed again. Focus the user already moved
+  // elsewhere is left alone.
+  useEffect(() => {
+    if (!retried.current || (!models && !error)) return
+    retried.current = false
+    if (document.activeElement && document.activeElement !== document.body) return
+    if (models) countRef.current?.focus()
+    else resultsRef.current?.querySelector('[role="alert"] button')?.focus()
+  }, [models, error])
+
+  // The sheet is mobile-only; close it if the window grows into the sidebar layout
+  useEffect(() => {
+    if (!filtersOpen) return
+    const mq = window.matchMedia('(min-width: 64rem)')
+    const onChange = () => mq.matches && setFiltersOpen(false)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [filtersOpen])
+
+  const { results, brandCounts } = useMemo(
+    () => (models ? filterModels(models, f) : { results: [], brandCounts: {} }),
+    [models, f.q, f.brand, f.category, f.price, f.sort],
   )
+
+  // Offer only options that match something in this snapshot
+  const options = useMemo(() => {
+    if (!models) return { brands, categories }
+    const has = (key, slug) => models.some((m) => m[key] === slug)
+    return {
+      brands: brands.filter((b) => has('brand', b.slug)),
+      categories: categories.filter((c) => has('category', c.slug)),
+    }
+  }, [models])
+
+  const brandName = brands.find((b) => b.slug === f.brand)?.name ?? f.brand
+  const categoryName = categories.find((c) => c.slug === f.category)?.name ?? f.category
+  const priceLabel = PRICE_RANGES.find((r) => r.id === f.price)?.label ?? ''
   const active = [
-    f.q && { key: 'q', label: `“${f.q}”` },
-    f.brand && { key: 'brand', label: brands.find((b) => b.slug === f.brand)?.name ?? f.brand },
-    f.category && { key: 'category', label: categories.find((c) => c.slug === f.category)?.name ?? f.category },
-    f.price && { key: 'price', label: PRICE_RANGES.find((r) => r.id === f.price)?.label },
+    f.q && { key: 'q', label: `“${f.q}”`, remove: `Hapus pencarian “${f.q}”` },
+    f.brand && { key: 'brand', label: brandName, remove: `Hapus filter ${brandName}` },
+    f.category && { key: 'category', label: categoryName, remove: `Hapus filter ${categoryName}` },
+    f.price && { key: 'price', label: priceLabel, remove: `Hapus filter harga ${priceLabel}` },
   ].filter(Boolean)
+  const filterCount = active.filter((a) => a.key !== 'q').length
+
+  const wanted = [f.q && `*${f.q}*`, f.brand && `brand ${brandName}`, f.price && `harga ${priceLabel}`].filter(Boolean)
+  const waAsk = wanted.length
+    ? waLink(
+        `Halo admin Complete Selular, saya cari ${wanted.join(', ')} tapi belum ketemu di website. Apakah stoknya tersedia?`,
+      )
+    : waLink()
+
+  const remaining = results.length - shown
+  const panel = (
+    <FilterPanel
+      f={f}
+      options={options}
+      brandCounts={models && brandCounts}
+      onChange={(key, value) => apply({ [key]: value })}
+    />
+  )
 
   return (
     <>
       <Seo title="Katalog Produk" description="Daftar harga HP, tablet & gadget terbaru di Complete Selular." />
-      <PageHeader title="Katalog Produk" subtitle="Temukan smartphone, tablet & gadget terbaru dengan harga terbaik." />
+      <PageHeader title="Katalog Produk" subtitle="Smartphone, tablet & gadget terbaru dengan harga terbaik." />
 
-      <div className="container-page grid gap-8 py-8 lg:grid-cols-[240px_1fr]">
-        {/* Filters: sidebar on desktop, collapsible panel on mobile */}
-        <aside className={`${filtersOpen ? 'block' : 'hidden'} space-y-7 lg:block`}>
-          <FilterGroup title="Kategori">
-            <Chip active={!f.category} onClick={() => update('category', '')}>
-              Semua
-            </Chip>
-            {categories.map((c) => (
-              <Chip key={c.slug} active={f.category === c.slug} onClick={() => update('category', c.slug)}>
-                {c.name}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup title="Harga">
-            {PRICE_RANGES.map((r) => (
-              <Chip key={r.id} active={f.price === r.id} onClick={() => update('price', f.price === r.id ? '' : r.id)}>
-                {r.label}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup title="Brand">
-            {brands.map((b) => (
-              <Chip
-                key={b.slug}
-                active={f.brand === b.slug}
-                onClick={() => update('brand', f.brand === b.slug ? '' : b.slug)}
-              >
-                {b.name}
-              </Chip>
-            ))}
-          </FilterGroup>
+      <div className="container-page grid gap-4 py-3 sm:py-4 lg:grid-cols-[240px_1fr]">
+        {/* Desktop sidebar; phones and tablets get the same filters in a bottom sheet */}
+        <aside
+          aria-labelledby={`${panelId}-side`}
+          className="card hidden p-4 lg:sticky lg:top-[7.75rem] lg:block lg:max-h-[calc(100dvh-8.75rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain"
+        >
+          <h2 id={`${panelId}-side`} className="text-ink mb-3 text-base font-extrabold">
+            Filter
+          </h2>
+          {panel}
         </aside>
 
-        <div className="min-w-0">
-          <div className="mb-5 flex flex-wrap items-center gap-3">
-            <input
-              type="search"
-              value={f.q}
-              onChange={(e) => update('q', e.target.value)}
-              placeholder="Cari produk…"
-              aria-label="Cari produk"
-              className="focus:ring-brand-500 h-10 min-w-0 flex-1 rounded-full bg-white px-4 text-sm ring-1 ring-slate-200 outline-none focus:ring-2 sm:max-w-xs"
-            />
+        <div ref={resultsRef} className="min-w-0">
+          {/* Marketplace toolbar: result count left, filter + sort right */}
+          <div className="card mb-3 flex flex-wrap items-center gap-2 px-3 py-2 sm:min-h-14 sm:px-4">
+            <div className="w-full sm:me-auto sm:w-auto">
+              {models ? (
+                <h2
+                  ref={countRef}
+                  tabIndex={-1}
+                  className="text-muted rounded text-sm font-normal focus-visible:outline-offset-4"
+                >
+                  <b className="text-ink font-extrabold">{results.length}</b> produk
+                </h2>
+              ) : (
+                !error && <div aria-hidden className="skeleton my-0.5 h-4 w-20 rounded" />
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => setFiltersOpen((v) => !v)}
-              className="btn-ghost !py-2 lg:hidden"
+              onClick={() => setFiltersOpen(true)}
+              aria-haspopup="dialog"
               aria-expanded={filtersOpen}
+              // The panel only exists while the sheet is open
+              aria-controls={filtersOpen ? panelId : undefined}
+              className={`${CONTROL} flex-1 justify-center gap-2 px-3 font-bold sm:flex-none lg:hidden`}
             >
-              <SlidersHorizontal className="size-4" /> Filter
+              <SlidersHorizontal className="text-muted size-4" aria-hidden /> Filter
+              {filterCount > 0 && (
+                <>
+                  <span className="sr-only">, </span>
+                  <span className="bg-brand-600 grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-xs font-bold text-white">
+                    {filterCount}
+                    <span className="sr-only"> aktif</span>
+                  </span>
+                </>
+              )}
             </button>
-            <select
-              value={f.sort}
-              onChange={(e) => update('sort', e.target.value)}
-              aria-label="Urutkan"
-              className="focus:ring-brand-500 ml-auto h-10 rounded-full bg-white px-4 text-sm ring-1 ring-slate-200 outline-none focus:ring-2"
-            >
-              {SORTS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                aria-label="Urutkan"
+                value={f.sort}
+                onFocus={() => {
+                  sortPushed.current = false
+                }}
+                // Opening the picker again is a new deliberate choice, even if focus never left
+                onPointerDown={() => {
+                  sortPushed.current = false
+                }}
+                onChange={(e) => {
+                  // Arrow keys change a closed select once per press: only the first change while it
+                  // keeps focus gets a history entry, so Back does not step through every option
+                  apply({ sort: e.target.value }, { replace: sortPushed.current })
+                  sortPushed.current = true
+                }}
+                className={`${CONTROL} w-full appearance-none pr-9 pl-3 font-semibold`}
+              >
+                {SORTS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="text-muted pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
+                aria-hidden
+              />
+            </div>
           </div>
 
-          <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-            {products && (
-              <span>
-                <b className="text-slate-900">{results.length}</b> produk
-              </span>
-            )}
-            {active.map((a) => (
-              <button
-                key={a.key}
-                type="button"
-                onClick={() => update(a.key, '')}
-                className="chip bg-brand-50 text-brand-700 ring-brand-100 hover:bg-brand-100 !py-1"
-              >
-                {a.label} <X className="size-3.5" />
-              </button>
-            ))}
-            {active.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setParams({}, { replace: true })}
-                className="hover:text-brand-700 underline"
-              >
-                Reset
-              </button>
-            )}
-          </div>
+          {/* Announces result counts as filters change; the visible count above is the focus target */}
+          <p role="status" className="sr-only">
+            {models ? `${results.length} produk ditemukan` : ''}
+          </p>
 
-          {!products ? (
-            <GridSkeleton />
-          ) : results.length ? (
+          {error && !models ? (
+            <ErrorState
+              onRetry={() => {
+                retried.current = true
+                retry()
+              }}
+              title="Gagal memuat produk"
+            />
+          ) : !models ? (
+            <GridSkeleton columns="sidebar" />
+          ) : (
             <>
-              <ProductGrid products={results.slice(0, limit)} priorityCount={4} />
-              {results.length > limit && (
-                <div className="mt-8 text-center">
-                  <button type="button" onClick={() => setLimit((l) => l + PAGE)} className="btn-ghost !px-8">
-                    Tampilkan lebih banyak ({results.length - limit})
+              {active.length > 0 && (
+                <div ref={chipsRef} className="mb-3 flex flex-wrap items-center gap-2">
+                  {active.map((a, i) => (
+                    <button
+                      key={a.key}
+                      type="button"
+                      data-remove
+                      aria-label={a.remove}
+                      onClick={() => {
+                        pendingFocus.current = { chip: i }
+                        apply({ [a.key]: '' })
+                      }}
+                      className="chip border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100 min-h-8 px-2.5 py-1 text-[13px]"
+                    >
+                      {a.label} <X className="size-3.5" aria-hidden />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => reset({ ...clearFilters, q: '' })}
+                    className="text-brand-700 hover:text-brand-800 rounded px-1 py-1 text-[13px] font-bold hover:underline pointer-coarse:min-h-11"
+                  >
+                    Hapus semua
                   </button>
                 </div>
               )}
+
+              {results.length ? (
+                <>
+                  <div ref={gridRef}>
+                    <ProductGrid products={results.slice(0, shown)} priorityCount={2} columns="sidebar" />
+                  </div>
+                  {remaining > 0 && (
+                    <div className="mt-4 text-center">
+                      <button type="button" onClick={showMore} className="btn-ghost w-full sm:w-auto">
+                        {remaining > PAGE
+                          ? `Tampilkan ${PAGE} lagi · ${remaining} tersisa`
+                          : `Tampilkan ${remaining} produk terakhir`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <EmptyState
+                  as="h3"
+                  // Blame the search only when nothing else could have emptied the list
+                  title={
+                    filterCount
+                      ? 'Tidak ada produk yang cocok dengan filter ini'
+                      : f.q
+                        ? `Tidak ada hasil untuk “${f.q}”`
+                        : 'Produk tidak ditemukan'
+                  }
+                  actions={
+                    <>
+                      {filterCount > 0 ? (
+                        <button type="button" onClick={() => reset(clearFilters)} className="btn-ghost">
+                          Hapus filter
+                        </button>
+                      ) : (
+                        f.q && (
+                          <button type="button" onClick={() => reset({ q: '' })} className="btn-ghost">
+                            Hapus pencarian
+                          </button>
+                        )
+                      )}
+                      <a href={waAsk} target="_blank" rel="noopener" className="btn-wa">
+                        <WhatsAppIcon className="size-4" /> Tanya stok via WhatsApp
+                        <span className="sr-only"> (buka di tab baru)</span>
+                      </a>
+                    </>
+                  }
+                >
+                  {filterCount
+                    ? 'Coba ubah atau hapus filter. '
+                    : f.q
+                      ? 'Coba kata kunci lain atau periksa ejaannya. '
+                      : ''}
+                  Produk yang kamu cari mungkin tersedia di toko, tanyakan langsung ke admin kami.
+                </EmptyState>
+              )}
             </>
-          ) : (
-            <EmptyState title="Produk tidak ditemukan">Coba kata kunci lain atau hapus beberapa filter.</EmptyState>
           )}
         </div>
       </div>
+
+      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter">
+        <div id={panelId} className="p-4">
+          {panel}
+        </div>
+        <div className="border-line sticky bottom-0 border-t bg-white px-4 py-3">
+          {models && !results.length && (
+            <p className="text-muted mb-3 text-sm">
+              <b className="text-ink font-bold">Tidak ada produk cocok.</b>{' '}
+              {filterCount ? 'Coba ubah atau hapus filter.' : f.q && `Pencarian “${f.q}” belum menemukan produk.`}
+            </p>
+          )}
+          <div className="flex gap-2">
+            {/* Clears only what this sheet sets; the search stays, unlike "Hapus semua" on the page */}
+            <button
+              type="button"
+              aria-disabled={!filterCount}
+              onClick={() => filterCount && apply(clearFilters)}
+              className="btn-ghost aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+            >
+              Hapus filter
+            </button>
+            <button type="button" onClick={() => setFiltersOpen(false)} className="btn-primary flex-1">
+              {!models ? 'Tampilkan produk' : results.length ? `Tampilkan ${results.length} produk` : 'Tutup'}
+            </button>
+          </div>
+        </div>
+        {/* The page behind the modal is inert, so the sheet carries its own announcement */}
+        <p role="status" className="sr-only">
+          {models ? (results.length ? `${results.length} produk cocok` : 'Tidak ada produk cocok') : ''}
+        </p>
+      </Dialog>
     </>
   )
 }
 
-function FilterGroup({ title, children }) {
+// Toolbar controls: same height, radius and border as the header's search field
+const CONTROL =
+  'border-line text-ink hover:border-brand-300 inline-flex h-10 items-center rounded-lg border bg-white text-sm transition-colors pointer-coarse:h-11'
+
+function FilterPanel({ f, options, brandCounts, onChange }) {
   return (
-    <div>
-      <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase">{title}</h3>
+    <div className="divide-line space-y-4 divide-y [&>*:not(:first-child)]:pt-4">
+      {/* A single category (everything is "Mobiles" today) filters nothing, so hide the group */}
+      {options.categories.length > 1 && (
+        <FilterGroup title="Kategori">
+          <Chip active={!f.category} onClick={() => onChange('category', '')}>
+            Semua
+          </Chip>
+          {options.categories.map((c) => (
+            <Chip key={c.slug} active={f.category === c.slug} onClick={() => onChange('category', c.slug)}>
+              {c.name}
+            </Chip>
+          ))}
+        </FilterGroup>
+      )}
+      <FilterGroup title="Harga">
+        {PRICE_RANGES.map((r) => (
+          <Chip key={r.id} active={f.price === r.id} onClick={() => onChange('price', f.price === r.id ? '' : r.id)}>
+            {r.label}
+          </Chip>
+        ))}
+      </FilterGroup>
+      <FilterGroup title="Brand">
+        {options.brands.map((b) => (
+          <Chip
+            key={b.slug}
+            active={f.brand === b.slug}
+            count={brandCounts && (brandCounts[b.slug] ?? 0)}
+            onClick={() => onChange('brand', f.brand === b.slug ? '' : b.slug)}
+          >
+            {b.name}
+          </Chip>
+        ))}
+      </FilterGroup>
+    </div>
+  )
+}
+
+function FilterGroup({ title, children }) {
+  const id = useId()
+  return (
+    <div role="group" aria-labelledby={id}>
+      <h3 id={id} className="text-ink mb-2 text-[13px] font-bold">
+        {title}
+      </h3>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   )
 }
 
-function Chip({ active, onClick, children }) {
+//   count  models this choice would show with the other filters kept; omitted while loading
+function Chip({ active, count, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`chip !text-[13px] ${
+      className={`chip min-h-8 gap-1 px-2.5 py-1 text-[13px] ${
         active
-          ? 'bg-brand-600 ring-brand-600 text-white'
-          : 'hover:text-brand-700 hover:ring-brand-300 bg-white text-slate-600 ring-slate-200'
+          ? 'border-brand-600 bg-brand-50 text-brand-700'
+          : 'border-line text-ink hover:border-brand-300 bg-white font-medium'
       }`}
     >
+      {active && <Check className="size-3.5 shrink-0" strokeWidth={3} aria-hidden />}
       {children}
+      {/* The space keeps "Samsung 13 produk" apart in the accessible name; flex layout ignores it */}
+      {count != null && ' '}
+      {count != null && (
+        <span className={`text-xs font-normal tabular-nums ${active ? 'text-brand-700' : 'text-muted'}`}>
+          {count}
+          <span className="sr-only"> produk</span>
+        </span>
+      )}
     </button>
   )
 }

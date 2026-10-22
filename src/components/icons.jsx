@@ -39,9 +39,10 @@ export const GoogleIcon = ({ className = 'size-5' }) => (
     <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1c.9-2.8 3.5-4.9 6.6-4.9Z" />
   </svg>
 )
-export const socialIcons = {
-  instagram: InstagramIcon,
-  facebook: FacebookIcon,
-  youtube: YouTubeIcon,
-  tiktok: TikTokIcon,
+// Keyed by the slugs in site.json socials[].name
+export const socials = {
+  instagram: { icon: InstagramIcon, label: 'Instagram' },
+  facebook: { icon: FacebookIcon, label: 'Facebook' },
+  youtube: { icon: YouTubeIcon, label: 'YouTube' },
+  tiktok: { icon: TikTokIcon, label: 'TikTok' },
 }

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# scripts/prerender.mjs rewrites this line with SITE_URL at build time.
+Sitemap: https://completeselular.co.id/sitemap.xml

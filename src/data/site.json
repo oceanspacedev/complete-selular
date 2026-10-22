@@ -8,8 +8,24 @@
   "logoAlt": { "src": "/img/site/logo-complete-selular-250x50-e6819e.webp", "w": 250, "h": 50 },
   "hero": [
     {
-      "768": { "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-768.webp", "w": 768, "h": 261 },
-      "1600": { "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-1600.webp", "w": 1600, "h": 544 }
+      "768": {
+        "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-768.webp",
+        "w": 768,
+        "h": 261,
+        "srcset": "/img/banners/banner-2560-x-871-px-1-8a57b0-768.webp 768w, /img/banners/banner-2560-x-871-px-1-8a57b0-1200.webp 1200w, /img/banners/banner-2560-x-871-px-1-8a57b0-1600.webp 1600w"
+      },
+      "1200": {
+        "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-1200.webp",
+        "w": 1200,
+        "h": 408,
+        "srcset": "/img/banners/banner-2560-x-871-px-1-8a57b0-768.webp 768w, /img/banners/banner-2560-x-871-px-1-8a57b0-1200.webp 1200w, /img/banners/banner-2560-x-871-px-1-8a57b0-1600.webp 1600w"
+      },
+      "1600": {
+        "src": "/img/banners/banner-2560-x-871-px-1-8a57b0-1600.webp",
+        "w": 1600,
+        "h": 544,
+        "srcset": "/img/banners/banner-2560-x-871-px-1-8a57b0-768.webp 768w, /img/banners/banner-2560-x-871-px-1-8a57b0-1200.webp 1200w, /img/banners/banner-2560-x-871-px-1-8a57b0-1600.webp 1600w"
+      }
     }
   ],
   "brandLogos": {
@@ -30,14 +46,42 @@
     "advan": { "src": "/img/brands/brand_advan-1-5x-7df7b5.webp", "w": 240, "h": 108 }
   },
   "payments": [
-    { "name": "kredivo", "img": { "src": "/img/partners/kredivo-1-5x-5b19f5.webp", "w": 240, "h": 127 } },
-    { "name": "akulaku", "img": { "src": "/img/partners/akulaku-1-5x-d14e09.webp", "w": 240, "h": 73 } },
-    { "name": "spaylater", "img": { "src": "/img/partners/spaylater-1-5x-3666bc.webp", "w": 240, "h": 127 } },
-    { "name": "homecredit", "img": { "src": "/img/partners/homecredit-1-5x-1180a4.webp", "w": 240, "h": 127 } },
-    { "name": "blibliinstore", "img": { "src": "/img/partners/blibliinstore-1-5x-3d8256.webp", "w": 240, "h": 83 } },
-    { "name": "baf", "img": { "src": "/img/partners/baf-1-5x-b78f84.webp", "w": 240, "h": 161 } },
-    { "name": "travelokaspayl", "img": { "src": "/img/partners/travelokaspayl-1-5x-c0cf37.webp", "w": 240, "h": 118 } },
-    { "name": "samsungfplus", "img": { "src": "/img/partners/samsungfplus-1-5x-3547bc.webp", "w": 240, "h": 127 } }
+    {
+      "name": "Kredivo",
+      "slug": "kredivo",
+      "img": { "src": "/img/partners/kredivo-1-5x-5b19f5.webp", "w": 240, "h": 127 }
+    },
+    {
+      "name": "Akulaku",
+      "slug": "akulaku",
+      "img": { "src": "/img/partners/akulaku-1-5x-d14e09.webp", "w": 240, "h": 73 }
+    },
+    {
+      "name": "SPayLater",
+      "slug": "spaylater",
+      "img": { "src": "/img/partners/spaylater-1-5x-3666bc.webp", "w": 240, "h": 127 }
+    },
+    {
+      "name": "Home Credit",
+      "slug": "homecredit",
+      "img": { "src": "/img/partners/homecredit-1-5x-1180a4.webp", "w": 240, "h": 127 }
+    },
+    {
+      "name": "Blibli InStore",
+      "slug": "blibliinstore",
+      "img": { "src": "/img/partners/blibliinstore-1-5x-3d8256.webp", "w": 240, "h": 83 }
+    },
+    { "name": "BAF", "slug": "baf", "img": { "src": "/img/partners/baf-1-5x-b78f84.webp", "w": 240, "h": 161 } },
+    {
+      "name": "Traveloka PayLater",
+      "slug": "travelokaspayl",
+      "img": { "src": "/img/partners/travelokaspayl-1-5x-c0cf37.webp", "w": 240, "h": 118 }
+    },
+    {
+      "name": "Samsung Finance+",
+      "slug": "samsungfplus",
+      "img": { "src": "/img/partners/samsungfplus-1-5x-3547bc.webp", "w": 240, "h": 127 }
+    }
   ],
   "marketplaces": [
     {
@@ -93,8 +137,8 @@
     "ipad-pro-13-8th-gen-m5cell-2tb"
   ],
   "about": {
-    "tagline": "Complete Selular merupakan perusahaan penyedia jasa layanan telekomunikasi yang terbaik, terlengkap dan berkualitas.",
-    "intro": "Sejak didirikan pada tahun 2009, Complete Selular telah tumbuh menjadi salah satu perusahaan penyedia jasa layanan Telekomunikasi & Aksesoris Handphone terkemuka yang telah tersebar di lebih dari 60 cabang toko seluruh wilayah Indonesia. Complete Selular telah menemani masyarakat Indonesia melalui berbagai produk smartphone dan aksesoris berkualitas dengan harga yang kompetitif.",
+    "tagline": "Toko smartphone dan aksesoris original sejak 2009, kini dengan lebih dari 60 cabang.",
+    "intro": "Sejak didirikan pada tahun 2009, Complete Selular telah tumbuh menjadi salah satu perusahaan penyedia jasa layanan telekomunikasi & aksesoris handphone terkemuka yang telah tersebar di lebih dari 60 cabang toko seluruh wilayah Indonesia. Complete Selular telah menemani masyarakat Indonesia melalui berbagai produk smartphone dan aksesoris berkualitas dengan harga yang kompetitif.",
     "vision": "Menjadi perusahaan penyedia jasa layanan telekomunikasi yang terbaik dan berkualitas pelayanannya di seluruh dunia.",
     "missions": [
       "Menjadikan kerja sebagai ibadah ikhlas",
@@ -113,39 +157,57 @@
     "items": [
       {
         "thumb": { "src": "/img/promos/3-4fe55e-480.webp", "w": 480, "h": 724 },
-        "full": { "src": "/img/promos/3-4fe55e-1200.webp", "w": 1200, "h": 1809 }
+        "full": { "src": "/img/promos/3-4fe55e-1200.webp", "w": 1200, "h": 1809 },
+        "title": "Juragan Juli Banyak Promoan",
+        "alt": "Poster Juragan Juli Banyak Promoan: dapatkan free gift berupa kaos, tas, dan mug untuk pembelian smartphone."
       },
       {
         "thumb": { "src": "/img/promos/cs_ketupat_promo-1-a3535f-480.webp", "w": 480, "h": 724 },
-        "full": { "src": "/img/promos/cs_ketupat_promo-1-a3535f-1200.webp", "w": 1200, "h": 1809 }
+        "full": { "src": "/img/promos/cs_ketupat_promo-1-a3535f-1200.webp", "w": 1200, "h": 1809 },
+        "title": "Promo Ketupat: Kejar Untung Berlipat",
+        "alt": "Poster Promo Ketupat periode April: cicilan DP 0%, bunga 0%, dan cashback hingga Rp750 ribu untuk OPPO A38, vivo Y100, realme 12, Samsung A15, Redmi 13C, Infinix Note 40, dan iPhone 11."
       },
       {
         "thumb": { "src": "/img/promos/cs-2-baret-scaled-d39cb5-480.webp", "w": 480, "h": 724 },
-        "full": { "src": "/img/promos/cs-2-baret-scaled-d39cb5-1200.webp", "w": 1200, "h": 1809 }
+        "full": { "src": "/img/promos/cs-2-baret-scaled-d39cb5-1200.webp", "w": 1200, "h": 1809 },
+        "title": "Ramadhan Super Sale",
+        "alt": "Poster Ramadhan Super Sale: bulan penuh berkah, diskon melimpah, plus free gift berupa kaos, tas, dan mug."
       },
       {
         "thumb": { "src": "/img/promos/promo-november-f1ce34-480.webp", "w": 480, "h": 679 },
-        "full": { "src": "/img/promos/promo-november-f1ce34-1200.webp", "w": 1131, "h": 1600 }
+        "full": { "src": "/img/promos/promo-november-f1ce34-1131.webp", "w": 1131, "h": 1600 },
+        "title": "Novroblem: Aksesori Cicilan Rp50 Ribu",
+        "alt": "Poster promo Novroblem November: cukup belanja Rp500.000 bisa dicicil Rp50.000 per bulan untuk aksesori seperti TWS, smartwatch, speaker, dan powerbank."
       },
       {
         "thumb": { "src": "/img/promos/promo-november-cs-1f9bb8-480.webp", "w": 480, "h": 679 },
-        "full": { "src": "/img/promos/promo-november-cs-1f9bb8-1200.webp", "w": 1131, "h": 1600 }
+        "full": { "src": "/img/promos/promo-november-cs-1f9bb8-1131.webp", "w": 1131, "h": 1600 },
+        "title": "Novroblem: Belanja November Tanpa Problem",
+        "alt": "Poster promo Novroblem November: kredit syarat mudah, gratis screen protector dan proteksi 24 bulan untuk iPhone 15, serta cashback hingga jutaan rupiah untuk OPPO A58, vivo Y17s, realme C51, Redmi 12, Samsung A05s, Infinix Note 30, dan ZTE Blade V50 Design."
       },
       {
         "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-05-b95cd1-480.webp", "w": 480, "h": 679 },
-        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-05-b95cd1-1200.webp", "w": 1131, "h": 1600 }
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-05-b95cd1-1131.webp", "w": 1131, "h": 1600 },
+        "title": "Powerbank Oraimo",
+        "alt": "Poster Solusi Tepat Buat Kamu: powerbank Oraimo untuk kamu yang sering kehabisan baterai, tersedia di Complete Selular."
       },
       {
         "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-00-b6a480-480.webp", "w": 480, "h": 679 },
-        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-00-b6a480-1200.webp", "w": 1131, "h": 1600 }
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-00-b6a480-1131.webp", "w": 1131, "h": 1600 },
+        "title": "Hydro Gel Pelindung Layar",
+        "alt": "Poster Hydro Gel: pelindung layar yang bisa disesuaikan dengan tipe HP apa pun, pasang sekarang di Complete Selular."
       },
       {
         "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-02-3d94af-480.webp", "w": 480, "h": 679 },
-        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-02-3d94af-1200.webp", "w": 1131, "h": 1599 }
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-02-3d94af-1131.webp", "w": 1131, "h": 1599 },
+        "title": "Smartwatch",
+        "alt": "Poster Solusi Tepat Buat Kamu: smartwatch impian kamu, tersedia di Complete Selular."
       },
       {
         "thumb": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-03-74246c-480.webp", "w": 480, "h": 678 },
-        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-03-74246c-1200.webp", "w": 1132, "h": 1599 }
+        "full": { "src": "/img/promos/whatsapp-image-2023-06-15-at-15-33-03-74246c-1132.webp", "w": 1132, "h": 1599 },
+        "title": "Speaker Bluetooth",
+        "alt": "Poster Solusi Tepat Buat Kamu: speaker Bluetooth untuk kamu yang butuh suara gahar, tersedia di Complete Selular."
       }
     ]
   }

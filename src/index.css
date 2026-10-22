@@ -1,7 +1,18 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Navy of the Complete Selular logotype — header band, footer, headings on dark */
+  --color-navy-700: #00428a;
+  --color-navy-800: #003470;
+  --color-navy-900: #002552;
+
+  /* Text: warm near-black and a readable grey (retail sites avoid pure/blue-black) */
+  --color-ink: #2e3135;
+  --color-muted: #5f646b;
+  --color-line: #e6e8eb;
+  --color-canvas: #f4f5f7;
 
   /* Brand blue, matched to the Complete Selular logo */
   --color-brand-50: #eef5ff;
@@ -20,22 +31,57 @@
   --color-accent-500: #e5252f;
   --color-accent-600: #c81822;
 
-  --radius-card: 1.25rem;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px -4px rgb(15 23 42 / 0.08);
-  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 16px 32px -8px rgb(23 87 224 / 0.18);
+  /* WhatsApp green, darkened so white labels pass 4.5:1 (#25d366 is only 1.98:1) */
+  --color-wa-600: #15803d;
+  --color-wa-700: #166534;
+
+  /* Flat retail look: small radius, short soft shadow (no glow, no rings) */
+  --radius-card: 0.5rem;
+  --shadow-card: 0 1px 4px rgb(51 53 56 / 0.12), 0 4px 8px rgb(51 53 56 / 0.06);
+  --shadow-lift: 0 2px 6px rgb(51 53 56 / 0.14), 0 8px 16px rgb(51 53 56 / 0.1);
 }
 
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
-    scroll-padding-top: 5rem;
+    /* Dialogs lock scrolling with overflow:hidden; keeping the scrollbar's space stops the page
+       (and the fixed nav) from shifting sideways behind them */
+    scrollbar-gutter: stable;
+    /* Keep keyboard-focused elements clear of the sticky header and, on mobile,
+       the fixed bottom nav + WhatsApp button stacked above it. */
+    scroll-padding-top: 7.5rem;
+    scroll-padding-bottom: calc(9rem + env(safe-area-inset-bottom));
+    @media (width >= 64rem) {
+      scroll-padding-bottom: 6rem;
+    }
   }
   body {
-    @apply bg-slate-50 font-sans text-slate-800 antialiased;
-    font-feature-settings: 'cv11', 'ss01';
+    @apply bg-canvas text-ink font-sans antialiased;
   }
   :focus-visible {
     @apply outline-brand-500 outline-2 outline-offset-2;
+  }
+  button:not(:disabled),
+  [role='button'],
+  summary,
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+  :disabled {
+    cursor: not-allowed;
+  }
+  /* iOS Safari zooms into inputs smaller than 16px */
+  input,
+  select,
+  textarea {
+    @media (width < 40rem) {
+      font-size: max(16px, 1em);
+    }
+  }
+  /* slate-600 keeps 4.5:1 on the grey (slate-100) header search field as well as on white */
+  ::placeholder {
+    @apply text-slate-600 opacity-100;
   }
 }
 
@@ -50,47 +96,91 @@
   }
 }
 
+/* Focus ring drawn inside the element — for controls inside overflow-hidden/scroll containers */
+@utility focus-ring-inset {
+  &:focus-visible {
+    outline-offset: -3px;
+  }
+}
+
 @utility card {
-  @apply rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-slate-900/5;
+  @apply rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)];
+}
+
+/* A plain white band that sections sit on, separated by the canvas grey (Eraspace-style) */
+@utility band {
+  @apply bg-white;
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50;
+  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold whitespace-nowrap transition-[color,background-color,border-color,scale] duration-150 select-none active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 pointer-coarse:min-h-11;
 }
 
 @utility btn-primary {
   @apply btn bg-brand-600 hover:bg-brand-700 text-white;
 }
 
+/* Outlined secondary action, like marketplace "Masuk" buttons */
 @utility btn-ghost {
-  @apply btn hover:text-brand-700 bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50;
+  @apply btn border-brand-600 text-brand-700 hover:bg-brand-50 border bg-white;
 }
 
 @utility btn-wa {
-  @apply btn bg-[#25d366] text-white hover:bg-[#1ebe5b];
+  @apply btn bg-wa-600 hover:bg-wa-700 text-white;
 }
 
 @utility chip {
-  @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition-colors;
+  @apply inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,scale] duration-150 select-none active:scale-[0.98] pointer-coarse:min-h-11;
+}
+
+/* Hooks for the fixed chrome so it can step aside on very short viewports (landscape phones, 200%+ zoom):
+   header and bottom nav scroll with the page (the nav ends up after the footer), floating buttons go */
+@media (max-height: 30rem) {
+  html {
+    scroll-padding: 1rem;
+  }
+  .site-header,
+  .site-bottom-nav {
+    position: static;
+  }
+  .site-fab {
+    display: none;
+  }
+  .site-footer {
+    padding-bottom: 0;
+  }
 }
 
 /* Article body from WordPress */
 .prose-cs {
   @apply text-[17px] leading-8 text-slate-700;
+  overflow-wrap: break-word;
+  /* The page already renders the title as the real H1 */
+  & h1 {
+    display: none;
+  }
   & h2 {
-    @apply mt-10 mb-3 text-2xl font-bold tracking-tight text-slate-900;
+    @apply mt-10 mb-3 text-2xl leading-tight font-bold tracking-tight text-slate-900;
   }
   & h3 {
-    @apply mt-8 mb-2 text-xl font-bold text-slate-900;
+    @apply mt-8 mb-2 text-xl leading-snug font-bold text-slate-900;
+  }
+  & h4,
+  & h5,
+  & h6 {
+    @apply mt-6 mb-2 text-lg font-semibold text-slate-900;
   }
   & p {
     @apply my-4;
+  }
+  & p:empty {
+    display: none;
   }
   & a {
     @apply text-brand-700 decoration-brand-200 hover:decoration-brand-500 font-medium underline underline-offset-2;
   }
   & img {
-    @apply my-6 h-auto w-full rounded-2xl;
+    @apply my-6 h-auto max-w-full rounded-lg;
   }
   & ul {
     @apply my-4 list-disc pl-6;
@@ -99,7 +189,7 @@
     @apply my-4 list-decimal pl-6;
   }
   & li {
-    @apply my-1;
+    @apply my-1 pl-1;
   }
   & strong {
     @apply font-semibold text-slate-900;
@@ -108,12 +198,44 @@
     @apply my-6;
   }
   & table {
-    @apply my-6 w-full text-sm;
+    @apply my-6 block w-full overflow-x-auto text-sm;
   }
   & td,
   & th {
     @apply border border-slate-200 px-3 py-2;
   }
+}
+
+/* Dialog entrance (see components/Dialog.jsx) */
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.dialog-sheet[open] {
+  animation: sheet-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dialog-fade[open],
+.dialog-sheet[open]::backdrop,
+.dialog-fade[open]::backdrop {
+  animation: fade-in 0.18s ease-out;
+}
+
+/* Compare toast (components/Layout.jsx) */
+@keyframes toast-in {
+  from {
+    translate: 0 12px;
+    opacity: 0;
+  }
+}
+.toast-in {
+  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes shimmer {
@@ -131,7 +253,12 @@
   ::before,
   ::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .skeleton {
+    animation: none;
+    background: #eef2f7;
   }
 }

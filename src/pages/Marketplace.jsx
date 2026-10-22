@@ -1,8 +1,22 @@
 import { ExternalLink } from 'lucide-react'
 import site from '../data/site.json'
 import PageHeader from '../components/PageHeader'
+import SectionHeader from '../components/SectionHeader'
 import Img from '../components/Img'
 import Seo from '../components/Seo'
+
+// Older snapshots stored slug-like payment names; map them to the names customers know.
+const PAYMENT_NAMES = {
+  kredivo: 'Kredivo',
+  akulaku: 'Akulaku',
+  spaylater: 'SPayLater',
+  homecredit: 'Home Credit',
+  blibliinstore: 'Blibli InStore',
+  baf: 'BAF',
+  travelokaspayl: 'Traveloka PayLater',
+  samsungfplus: 'Samsung Finance+',
+}
+const paymentName = (name) => PAYMENT_NAMES[name] ?? name
 
 export default function Marketplace() {
   return (
@@ -12,44 +26,64 @@ export default function Marketplace() {
         description="Belanja di toko resmi Complete Selular di Tokopedia, Shopee, Lazada, Blibli, dan TikTok Shop."
       />
       <PageHeader
-        title="Belanja Dimanapun, Kapanpun!"
-        subtitle="Complete Selular Official Store hadir di marketplace favoritmu."
+        title="Belanja di Mana Pun, Kapan Pun!"
+        crumbs={[{ label: 'Marketplace Resmi' }]}
+        subtitle="Toko resmi Complete Selular hadir di marketplace favoritmu. Tautan toko dibuka di tab baru."
       />
-      <div className="container-page py-10">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {site.marketplaces.map((m) => (
-            <a
-              key={m.name}
-              href={m.url}
-              target="_blank"
-              rel="noopener"
-              className="group card flex items-center gap-5 p-6 transition-shadow hover:shadow-[var(--shadow-lift)]"
-            >
-              <div className="flex h-14 w-28 shrink-0 items-center justify-center">
-                {m.img ? (
-                  <Img img={m.img} alt={m.name} className="max-h-full w-auto object-contain" />
-                ) : (
-                  <span className="font-bold">{m.name}</span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-900">{m.name}</p>
-                <p className="text-sm text-slate-500">Complete Selular Official</p>
-              </div>
-              <ExternalLink className="group-hover:text-brand-600 size-5 text-slate-300" />
-            </a>
-          ))}
-        </div>
 
-        <h2 className="mt-14 mb-4 text-lg font-bold text-slate-900">Cicilan & pembayaran di toko</h2>
-        <div className="flex flex-wrap gap-3">
-          {site.payments.map((p) => (
-            <span key={p.name} className="card px-4 py-3">
-              <Img img={p.img} alt={p.name} className="h-7 w-auto" />
-            </span>
-          ))}
+      <section className="band mt-2 py-4 sm:py-6">
+        <div className="container-page">
+          <SectionHeader title="Toko resmi kami" />
+          <ul className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+            {site.marketplaces.map((m) => (
+              <li key={m.name}>
+                <a
+                  href={m.url}
+                  target="_blank"
+                  rel="noopener"
+                  className="group border-line hover:border-brand-300 flex h-full items-center gap-3 rounded-lg border bg-white p-3 transition-colors"
+                >
+                  <span className="flex h-10 w-20 shrink-0 items-center justify-center">
+                    {m.img ? (
+                      <Img img={m.img} alt="" className="max-h-8 w-auto max-w-full object-contain" />
+                    ) : (
+                      <span className="text-ink text-sm font-bold" aria-hidden>
+                        {m.name}
+                      </span>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-ink block text-sm font-bold">{m.name}</span>
+                    <span className="text-muted block text-xs">Toko resmi</span>
+                  </span>
+                  <span className="text-brand-600 group-hover:text-brand-700 inline-flex shrink-0 items-center gap-1 text-[13px] font-bold group-hover:underline">
+                    Buka toko
+                    <ExternalLink className="size-3.5" aria-hidden />
+                  </span>
+                  <span className="sr-only">(buka di tab baru)</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+      </section>
+
+      <section className="band mt-2 mb-2 py-4 sm:py-6">
+        <div className="container-page">
+          <SectionHeader title="Cicilan & pembayaran di toko" />
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-8">
+            {site.payments.map((p) => (
+              <li
+                key={p.name}
+                className="border-line flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-center"
+              >
+                <Img img={p.img} alt="" className="h-8 w-auto max-w-full object-contain" />
+                <span className="text-ink text-xs">{paymentName(p.name)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
     </>
   )
 }

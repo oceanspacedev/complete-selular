@@ -1,20 +1,20 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
-export default function SectionHeader({ eyebrow, title, to, linkLabel = 'Lihat semua', children }) {
+
+// Marketplace section heading: bold title left, plain "Lihat Semua" link right, no decoration.
+// `eyebrow` is accepted for old callers but no longer shown.
+export default function SectionHeader({ title, to, linkLabel = 'Lihat Semua', children }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4">
-      <div>
-        {eyebrow && <p className="text-brand-600 mb-1 text-xs font-semibold tracking-wider uppercase">{eyebrow}</p>}
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{title}</h2>
-      </div>
+    <div className="mb-3 flex items-center justify-between gap-4 sm:mb-4">
+      <h2 className="text-ink min-w-0 text-base font-extrabold sm:text-xl">{title}</h2>
       {children}
       {to && (
         <Link
           to={to}
-          className="group text-brand-700 hover:text-brand-800 inline-flex shrink-0 items-center gap-1 text-sm font-semibold"
+          className="text-brand-600 hover:text-brand-700 inline-flex shrink-0 items-center rounded text-sm font-bold pointer-coarse:-my-3 pointer-coarse:min-h-11"
         >
           {linkLabel}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          {/* Several "Lihat Semua" links share a page; name the section for screen readers */}
+          {typeof title === 'string' && <span className="sr-only"> {title}</span>}
         </Link>
       )}
     </div>

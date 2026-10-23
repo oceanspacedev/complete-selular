@@ -1,0 +1,62 @@
+[
+  {
+    "768": {
+      "src": "/img/banners/house-produk-terbaru-768.webp",
+      "w": 768,
+      "h": 261
+    },
+    "1200": {
+      "src": "/img/banners/house-produk-terbaru-1200.webp",
+      "w": 1200,
+      "h": 408
+    },
+    "1600": {
+      "src": "/img/banners/house-produk-terbaru-1600.webp",
+      "w": 1600,
+      "h": 544
+    },
+    "name": "produk-terbaru",
+    "href": "/katalog",
+    "alt": "HP terbaru sudah tiba: Samsung Galaxy Tab S12+ WIFI (12GB/512GB), OPPO A7 Pro 5G (6GB/256GB), Samsung Galaxy A27 5G 8/256GB. Mulai Rp5.599.000."
+  },
+  {
+    "768": {
+      "src": "/img/banners/house-cicilan-768.webp",
+      "w": 768,
+      "h": 261
+    },
+    "1200": {
+      "src": "/img/banners/house-cicilan-1200.webp",
+      "w": 1200,
+      "h": 408
+    },
+    "1600": {
+      "src": "/img/banners/house-cicilan-1600.webp",
+      "w": 1600,
+      "h": 544
+    },
+    "name": "cicilan",
+    "href": "/marketplace",
+    "alt": "Cicilan mudah lewat 8 partner resmi: Kredivo, Akulaku, SPayLater, Home Credit, Blibli InStore, BAF, Traveloka PayLater, Samsung Finance+."
+  },
+  {
+    "768": {
+      "src": "/img/banners/house-cabang-768.webp",
+      "w": 768,
+      "h": 261
+    },
+    "1200": {
+      "src": "/img/banners/house-cabang-1200.webp",
+      "w": 1200,
+      "h": 408
+    },
+    "1600": {
+      "src": "/img/banners/house-cabang-1600.webp",
+      "w": 1600,
+      "h": 544
+    },
+    "name": "cabang",
+    "href": "/daftar-toko-cabang",
+    "alt": "60+ cabang Complete Selular sejak 2009, rating 4,9 · 2.432 ulasan Google."
+  }
+]

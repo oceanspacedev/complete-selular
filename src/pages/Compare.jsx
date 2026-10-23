@@ -98,21 +98,13 @@ export default function Compare() {
         description={`Bandingkan harga dan spesifikasi hingga ${compare.max} HP, tablet, atau gadget sekaligus di Complete Selular.`}
         noindex
       />
-      <PageHeader
-        title="Bandingkan Produk"
-        subtitle={`Bandingkan harga dan spesifikasi hingga ${compare.max} produk sekaligus.`}
-      />
+      <PageHeader title="Bandingkan Produk" subtitle={`Maksimal ${compare.max} produk.`} />
       <div className="container-page py-3 sm:py-4">
         {notice && (
-          <div className="bg-ink mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg py-1.5 pr-1.5 pl-4 text-sm text-white">
+          <div className="border-brand-100 bg-brand-50 text-ink mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border py-1.5 pr-1.5 pl-4 text-sm">
             <p className="min-w-0 flex-1">{notice.text}</p>
             {notice.list && (
-              <button
-                id="compare-undo"
-                type="button"
-                onClick={undo}
-                className="btn min-h-9 bg-white/15 px-3 py-1.5 text-white hover:bg-white/25"
-              >
+              <button id="compare-undo" type="button" onClick={undo} className="btn-ghost min-h-9 px-3 py-1.5">
                 Urungkan
               </button>
             )}
@@ -120,7 +112,7 @@ export default function Compare() {
               type="button"
               onClick={dismiss}
               aria-label="Tutup pemberitahuan"
-              className="grid size-9 place-items-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white pointer-coarse:size-11"
+              className="text-muted hover:text-ink hover:bg-brand-100 grid size-9 place-items-center rounded-lg pointer-coarse:size-11"
             >
               <X className="size-4" />
             </button>
@@ -141,8 +133,7 @@ export default function Compare() {
               </>
             }
           >
-            Tekan tombol <strong className="text-ink font-bold">Bandingkan</strong> di halaman produk atau ikon
-            bandingkan di kartu produk. Kamu bisa membandingkan hingga {compare.max} produk sekaligus.
+            Tekan <strong className="text-ink font-bold">Bandingkan</strong> di produk yang kamu mau.
           </EmptyState>
         ) : failed.length ? (
           <ErrorState title="Gagal memuat perbandingan" onRetry={() => failed.forEach((s) => s.retry())} />
@@ -284,11 +275,11 @@ function CompareTable({ items, groups, empty, onRemove }) {
                   to={`/product/${it.p.slug}`}
                   className="group flex flex-col items-center gap-1.5 rounded-lg text-center"
                 >
-                  <span className="grid size-12 place-items-center sm:size-16 lg:size-20">
+                  <span className="grid size-20 place-items-center sm:size-24 lg:size-28">
                     <Img
                       img={it.p.image}
                       noUpscale={it.p.image?.lowRes}
-                      sizes="96px"
+                      sizes="(min-width: 1024px) 112px, (min-width: 640px) 96px, 80px"
                       alt=""
                       className="size-full object-contain"
                     />
@@ -331,7 +322,7 @@ function CompareTable({ items, groups, empty, onRemove }) {
                     target="_blank"
                     rel="noopener"
                     aria-label={`Beli via WhatsApp: ${full} (buka di tab baru)`}
-                    className="btn-wa mt-2 w-full !px-3"
+                    className="btn-ghost mt-2 w-full !px-3"
                   >
                     <WhatsAppIcon className="size-4 shrink-0" />
                     <span>
@@ -390,7 +381,7 @@ function CompareTable({ items, groups, empty, onRemove }) {
 // is hidden from screen readers, which get the real ones.
 function PinnedNames({ items, visible }) {
   return (
-    <div aria-hidden className="sticky top-28 z-20 h-0 sm:top-16 lg:top-27 [@media(max-height:30rem)]:top-0">
+    <div aria-hidden className="sticky top-25 z-20 h-0 sm:top-16 lg:top-27 [@media(max-height:30rem)]:top-0">
       <div
         style={{ '--n': items.length }}
         className={`border-line absolute inset-x-0 top-0 grid grid-cols-[repeat(var(--n),minmax(0,1fr))] border-b bg-white shadow-[var(--shadow-card)] transition-[opacity,translate,visibility] duration-150 motion-reduce:transition-none sm:grid-cols-[9rem_repeat(var(--n),minmax(0,1fr))] md:grid-cols-[11rem_repeat(var(--n),minmax(0,1fr))] lg:grid-cols-[14rem_repeat(var(--n),minmax(0,1fr))] ${

@@ -107,15 +107,9 @@ function ProductView({ p }) {
 
             <div className="mt-3">
               {p.price ? (
-                <>
-                  <p className="text-ink text-2xl font-extrabold tabular-nums">{price}</p>
-                  <p className="text-muted mt-0.5 text-xs">Harga dapat berubah sewaktu-waktu. Cek stok via WhatsApp.</p>
-                </>
+                <p className="text-ink text-2xl font-extrabold tabular-nums">{price}</p>
               ) : (
-                <>
-                  <p className="text-ink text-lg font-bold">{price}</p>
-                  <p className="text-muted mt-0.5 text-xs">Tanyakan harga dan stok terbaru lewat WhatsApp.</p>
-                </>
+                <p className="text-ink text-lg font-bold">{price}</p>
               )}
             </div>
 

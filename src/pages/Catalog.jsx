@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Check, ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import { brands, categories } from '../data/brands.json'
+import { KINDS, PRICE_RANGES, productKind } from '../lib/format'
 import { useModels } from '../lib/data'
 import { waLink } from '../lib/wa'
 import { GridSkeleton, ProductGrid } from '../components/ProductCard'
@@ -11,14 +12,6 @@ import ErrorState from '../components/ErrorState'
 import Dialog from '../components/Dialog'
 import { WhatsAppIcon } from '../components/icons'
 import Seo from '../components/Seo'
-
-const PRICE_RANGES = [
-  { id: 'u2', label: 'Di bawah 2 juta', min: 0, max: 2e6 },
-  { id: '2-5', label: '2 – 5 juta', min: 2e6, max: 5e6 },
-  { id: '5-10', label: '5 – 10 juta', min: 5e6, max: 10e6 },
-  { id: '10-20', label: '10 – 20 juta', min: 10e6, max: 20e6 },
-  { id: 'o20', label: 'Di atas 20 juta', min: 20e6, max: Infinity },
-]
 
 // Models without a price always sink to the end
 const SORTS = [
@@ -33,7 +26,7 @@ const SORTS = [
 ]
 
 // URL parameter for each filter, so every state is shareable and survives Back
-const KEYS = { q: 'q', brand: 'brand', category: 'kategori', price: 'harga', sort: 'urut' }
+const KEYS = { q: 'q', kind: 'jenis', brand: 'brand', category: 'kategori', price: 'harga', sort: 'urut' }
 const SHOWN = 'tampil'
 const PAGE = 20
 
@@ -48,23 +41,36 @@ function haystack(m) {
   return haystacks.get(m)
 }
 
-// Brand is checked last, so the brand chips can show how many models each one would leave with
-// the current search and price
-function filterModels(models, { q, brand, category, price, sort }) {
+const kinds = new WeakMap()
+const kindOf = (m) => (kinds.has(m) ? kinds.get(m) : kinds.set(m, productKind(m.name)).get(m))
+
+// Kind and brand are checked last, so their chips can count how many models each one would leave
+// with the other filters kept (kinds counted within the chosen brand, brands within the chosen kind)
+function filterModels(models, { q, kind, brand, category, price, sort }) {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
   const range = PRICE_RANGES.find((r) => r.id === price)
   const brandCounts = {}
+  const kindCounts = {}
   const results = []
   for (const m of models) {
     if (category && m.category !== category) continue
     if (range && !(m.minPrice && m.minPrice >= range.min && m.minPrice < range.max)) continue
     if (words.length && !words.every((w) => haystack(m).includes(w))) continue
+    const k = kindOf(m)
+    if (!brand || m.brand === brand) kindCounts[k] = (kindCounts[k] ?? 0) + 1
+    if (kind && k !== kind) continue
     brandCounts[m.brand] = (brandCounts[m.brand] ?? 0) + 1
     if (!brand || m.brand === brand) results.push(m)
   }
-  results.sort(SORTS.find((s) => s.id === sort).compare)
-  return { results, brandCounts }
+  const compare = SORTS.find((s) => s.id === sort).compare
+  // While searching, the default order puts phones and tablets ahead of accessories, so "redmi"
+  // opens on Redmi phones rather than the newer Redmi Watch
+  results.sort(words.length && sort === 'new' ? (a, b) => isDevice(b) - isDevice(a) || compare(a, b) : compare)
+  return { results, brandCounts, kindCounts }
 }
+
+const DEVICES = new Set(['phone', 'tablet'])
+const isDevice = (m) => DEVICES.has(kindOf(m))
 
 function setOrDelete(params, key, value) {
   if (value) params.set(key, value)
@@ -80,6 +86,7 @@ export default function Catalog() {
   const sortParam = params.get(KEYS.sort)
   const f = {
     q: params.get(KEYS.q) ?? '',
+    kind: KINDS.some((k) => k.id === params.get(KEYS.kind)) ? params.get(KEYS.kind) : '',
     brand: params.get(KEYS.brand) ?? '',
     category: params.get(KEYS.category) ?? '',
     price: params.get(KEYS.price) ?? '',
@@ -112,7 +119,7 @@ export default function Catalog() {
     setParams(next, { replace })
   }
 
-  const clearFilters = { brand: '', category: '', price: '' }
+  const clearFilters = { kind: '', brand: '', category: '', price: '' }
   // Every reset leaves its button behind, so focus lands on the result count
   const reset = (changes) => {
     pendingFocus.current = { count: true }
@@ -168,9 +175,9 @@ export default function Catalog() {
     return () => mq.removeEventListener('change', onChange)
   }, [filtersOpen])
 
-  const { results, brandCounts } = useMemo(
-    () => (models ? filterModels(models, f) : { results: [], brandCounts: {} }),
-    [models, f.q, f.brand, f.category, f.price, f.sort],
+  const { results, brandCounts, kindCounts } = useMemo(
+    () => (models ? filterModels(models, f) : { results: [], brandCounts: {}, kindCounts: {} }),
+    [models, f.q, f.kind, f.brand, f.category, f.price, f.sort],
   )
 
   // Offer only options that match something in this snapshot
@@ -183,18 +190,25 @@ export default function Catalog() {
     }
   }, [models])
 
+  const kindLabel = KINDS.find((k) => k.id === f.kind)?.label ?? ''
   const brandName = brands.find((b) => b.slug === f.brand)?.name ?? f.brand
   const categoryName = categories.find((c) => c.slug === f.category)?.name ?? f.category
   const priceLabel = PRICE_RANGES.find((r) => r.id === f.price)?.label ?? ''
   const active = [
     f.q && { key: 'q', label: `“${f.q}”`, remove: `Hapus pencarian “${f.q}”` },
+    f.kind && { key: 'kind', label: kindLabel, remove: `Hapus filter ${kindLabel}` },
     f.brand && { key: 'brand', label: brandName, remove: `Hapus filter ${brandName}` },
     f.category && { key: 'category', label: categoryName, remove: `Hapus filter ${categoryName}` },
     f.price && { key: 'price', label: priceLabel, remove: `Hapus filter harga ${priceLabel}` },
   ].filter(Boolean)
   const filterCount = active.filter((a) => a.key !== 'q').length
 
-  const wanted = [f.q && `*${f.q}*`, f.brand && `brand ${brandName}`, f.price && `harga ${priceLabel}`].filter(Boolean)
+  const wanted = [
+    f.q && `*${f.q}*`,
+    f.kind && kindLabel,
+    f.brand && `brand ${brandName}`,
+    f.price && `harga ${priceLabel}`,
+  ].filter(Boolean)
   const waAsk = wanted.length
     ? waLink(
         `Halo admin Complete Selular, saya cari ${wanted.join(', ')} tapi belum ketemu di website. Apakah stoknya tersedia?`,
@@ -207,6 +221,7 @@ export default function Catalog() {
       f={f}
       options={options}
       brandCounts={models && brandCounts}
+      kindCounts={models && kindCounts}
       onChange={(key, value) => apply({ [key]: value })}
     />
   )
@@ -214,7 +229,7 @@ export default function Catalog() {
   return (
     <>
       <Seo title="Katalog Produk" description="Daftar harga HP, tablet & gadget terbaru di Complete Selular." />
-      <PageHeader title="Katalog Produk" subtitle="Smartphone, tablet & gadget terbaru dengan harga terbaik." />
+      <PageHeader title="Katalog Produk" />
 
       <div className="container-page grid gap-4 py-3 sm:py-4 lg:grid-cols-[240px_1fr]">
         {/* Desktop sidebar; phones and tablets get the same filters in a bottom sheet */}
@@ -327,7 +342,7 @@ export default function Catalog() {
                         pendingFocus.current = { chip: i }
                         apply({ [a.key]: '' })
                       }}
-                      className="chip border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100 min-h-8 px-2.5 py-1 text-[13px]"
+                      className="chip border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100 min-h-8 px-2.5 py-1 text-[13px] pointer-coarse:min-h-11"
                     >
                       {a.label} <X className="size-3.5" aria-hidden />
                     </button>
@@ -388,12 +403,7 @@ export default function Catalog() {
                     </>
                   }
                 >
-                  {filterCount
-                    ? 'Coba ubah atau hapus filter. '
-                    : f.q
-                      ? 'Coba kata kunci lain atau periksa ejaannya. '
-                      : ''}
-                  Produk yang kamu cari mungkin tersedia di toko, tanyakan langsung ke admin kami.
+                  {filterCount ? 'Coba ubah filter.' : f.q ? 'Coba kata kunci lain.' : 'Tanya stoknya ke admin.'}
                 </EmptyState>
               )}
             </>
@@ -440,9 +450,21 @@ export default function Catalog() {
 const CONTROL =
   'border-line text-ink hover:border-brand-300 inline-flex h-10 items-center rounded-lg border bg-white text-sm transition-colors pointer-coarse:h-11'
 
-function FilterPanel({ f, options, brandCounts, onChange }) {
+function FilterPanel({ f, options, brandCounts, kindCounts, onChange }) {
   return (
     <div className="divide-line space-y-4 divide-y [&>*:not(:first-child)]:pt-4">
+      <FilterGroup title="Jenis">
+        {KINDS.map((k) => (
+          <Chip
+            key={k.id}
+            active={f.kind === k.id}
+            count={kindCounts && (kindCounts[k.id] ?? 0)}
+            onClick={() => onChange('kind', f.kind === k.id ? '' : k.id)}
+          >
+            {k.label}
+          </Chip>
+        ))}
+      </FilterGroup>
       {/* A single category (everything is "Mobiles" today) filters nothing, so hide the group */}
       {options.categories.length > 1 && (
         <FilterGroup title="Kategori">
@@ -491,14 +513,16 @@ function FilterGroup({ title, children }) {
   )
 }
 
-//   count  models this choice would show with the other filters kept; omitted while loading
+//   count  models this choice would show with the other filters kept; omitted while loading. It is not
+//          shown, but a choice that would show nothing is disabled (unless active, so it can be undone).
 function Chip({ active, count, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`chip min-h-8 gap-1 px-2.5 py-1 text-[13px] ${
+      disabled={count === 0 && !active}
+      className={`chip min-h-8 gap-1 px-2.5 py-1 text-[13px] disabled:opacity-40 pointer-coarse:min-h-11 ${
         active
           ? 'border-brand-600 bg-brand-50 text-brand-700'
           : 'border-line text-ink hover:border-brand-300 bg-white font-medium'
@@ -506,14 +530,6 @@ function Chip({ active, count, onClick, children }) {
     >
       {active && <Check className="size-3.5 shrink-0" strokeWidth={3} aria-hidden />}
       {children}
-      {/* The space keeps "Samsung 13 produk" apart in the accessible name; flex layout ignores it */}
-      {count != null && ' '}
-      {count != null && (
-        <span className={`text-xs font-normal tabular-nums ${active ? 'text-brand-700' : 'text-muted'}`}>
-          {count}
-          <span className="sr-only"> produk</span>
-        </span>
-      )}
     </button>
   )
 }

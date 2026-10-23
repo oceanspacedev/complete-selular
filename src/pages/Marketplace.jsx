@@ -25,11 +25,7 @@ export default function Marketplace() {
         title="Marketplace Resmi"
         description="Belanja di toko resmi Complete Selular di Tokopedia, Shopee, Lazada, Blibli, dan TikTok Shop."
       />
-      <PageHeader
-        title="Belanja di Mana Pun, Kapan Pun!"
-        crumbs={[{ label: 'Marketplace Resmi' }]}
-        subtitle="Toko resmi Complete Selular hadir di marketplace favoritmu. Tautan toko dibuka di tab baru."
-      />
+      <PageHeader title="Marketplace Resmi" />
 
       <section className="band mt-2 py-4 sm:py-6">
         <div className="container-page">
@@ -52,10 +48,7 @@ export default function Marketplace() {
                       </span>
                     )}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="text-ink block text-sm font-bold">{m.name}</span>
-                    <span className="text-muted block text-xs">Toko resmi</span>
-                  </span>
+                  <span className="text-ink min-w-0 flex-1 text-sm font-bold">{m.name}</span>
                   <span className="text-brand-600 group-hover:text-brand-700 inline-flex shrink-0 items-center gap-1 text-[13px] font-bold group-hover:underline">
                     Buka toko
                     <ExternalLink className="size-3.5" aria-hidden />

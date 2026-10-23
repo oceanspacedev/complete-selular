@@ -65,7 +65,7 @@ export default function Rail({ children, itemClass = ITEM }) {
               aria-disabled={off}
               tabIndex={off ? -1 : undefined}
               className={`absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white opacity-0 shadow-lg ring-1 ring-slate-200 transition-opacity group-focus-within/rail:opacity-100 group-hover/rail:opacity-100 [@media(hover:hover)]:grid ${
-                dir < 0 ? '-left-5' : '-right-5'
+                dir < 0 ? 'left-1' : 'right-1'
               } ${off ? 'cursor-not-allowed text-slate-300 shadow-none' : 'hover:text-brand-700 text-slate-700'}`}
             >
               {dir < 0 ? <ChevronLeft className="size-5" /> : <ChevronRight className="size-5" />}

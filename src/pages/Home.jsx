@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { BadgeCheck, ChevronLeft, ChevronRight, CreditCard, Star, Store } from 'lucide-react'
 import site from '../data/site.json'
+import houseBanners from '../data/banners.json'
+import kindShortcuts from '../data/kinds.json'
+import brandTiles from '../data/brand-tiles.json'
 import { brands } from '../data/brands.json'
 import { useModels, usePosts } from '../lib/data'
-import { formatDate, productKind, readableTitle } from '../lib/format'
+import { formatDate, PRICE_RANGES, productKind, readableTitle } from '../lib/format'
 import { absoluteUrl, DEFAULT_DESCRIPTION, SITE_URL } from '../lib/seo'
 import { waLink } from '../lib/wa'
-import ProductCard, { CardSkeleton, GridSkeleton, ProductGrid, RAIL_SIZES } from '../components/ProductCard'
+import ProductCard, { CardSkeleton, RAIL_SIZES } from '../components/ProductCard'
 import Rail, { RailSkeleton } from '../components/Rail'
 import SectionHeader from '../components/SectionHeader'
 import ErrorState from '../components/ErrorState'
 import Img from '../components/Img'
 import Seo from '../components/Seo'
-import { GoogleIcon, WhatsAppIcon } from '../components/icons'
 
 // Sections only pad their top, so the gap between any two of them is the same.
 // Every section is a white band; the 8px canvas gap between bands does the separating.
@@ -85,7 +87,8 @@ function pickLatest(models, size = 12) {
 }
 
 // The admin's picks are variant slugs (often several capacities of one phone): one card per model.
-function pickFeatured(modelOf, redirectOf, size) {
+// Picks already shown in "Produk Terbaru" (`shown`) only fill in when there are not enough others.
+function pickFeatured(modelOf, redirectOf, size, shown) {
   const seen = new Set()
   const list = []
   for (const slug of site.featured) {
@@ -95,12 +98,11 @@ function pickFeatured(modelOf, redirectOf, size) {
       list.push(m)
     }
   }
-  return preferPriced(list, size)
+  const fresh = list.filter((m) => !shown.has(m.key))
+  return preferPriced(fresh.length >= size ? fresh : [...fresh, ...list.filter((m) => shown.has(m.key))], size)
 }
 
-// Twelve cards fill 2, 3 and 4 columns evenly; the 5-column layout drops the last two.
 const FEATURED_COUNT = 12
-const FEATURED_GRID = 'xl:[&>*:nth-child(n+11)]:hidden'
 
 // The retry button unmounts together with the error message. Park focus on the section heading
 // first so keyboard and screen-reader users are not dropped back to the top of the page.
@@ -122,7 +124,10 @@ export default function Home() {
   const [latestRef, retryLatest] = useRetryFocus(retry)
   const latest = useMemo(() => (models ? pickLatest(models) : []), [models])
   // modelOf/redirectOf are new functions every render but only change meaning with the models
-  const featured = useMemo(() => (models ? pickFeatured(modelOf, redirectOf, FEATURED_COUNT) : []), [models])
+  const featured = useMemo(
+    () => (models ? pickFeatured(modelOf, redirectOf, FEATURED_COUNT, new Set(latest.map((m) => m.key))) : []),
+    [models, latest],
+  )
 
   // Most visits continue to a product page, so fetch its code while the browser is idle.
   useEffect(() => {
@@ -139,7 +144,34 @@ export default function Home() {
     <>
       <Seo jsonLd={jsonLd} />
       <h1 className="sr-only">Complete Selular — toko HP, tablet &amp; aksesoris resmi</h1>
+      {/* Section order follows Eraspace's home: categories, banners, category tiles, a
+          recommendation shelf on a coloured band, the store's promises, posters, then shelves */}
+      <CategoryRow />
       <Hero />
+      <BrandTiles />
+
+      {!error && (!models || featured.length > 0) && (
+        <section className="bg-brand-100 mt-2 py-4 sm:py-6">
+          <div className="container-page">
+            <SectionHeader title="Khusus Buatmu" to="/katalog" tone="button" />
+            {models ? (
+              <Rail>
+                {[
+                  <ShelfPoster key="poster" />,
+                  ...featured.map((m) => <ProductCard key={m.key} p={m} showNewBadge={false} sizes={RAIL_SIZES} />),
+                ]}
+              </Rail>
+            ) : (
+              <RailSkeleton label="Memuat produk pilihan…">
+                <CardSkeleton />
+              </RailSkeleton>
+            )}
+          </div>
+        </section>
+      )}
+
+      <Benefits />
+      <PromoRail />
 
       <section ref={latestRef} className={`${SECTION} [&_h2:focus]:outline-none`}>
         <div className="container-page">
@@ -161,24 +193,9 @@ export default function Home() {
       </section>
 
       <BrandStrip />
-      <PromoRail />
-
-      {!error && (!models || featured.length > 0) && (
-        <section className={SECTION}>
-          <div className="container-page">
-            <SectionHeader title="Khusus Buatmu" to="/katalog" />
-            {models ? (
-              <ProductGrid products={featured} className={FEATURED_GRID} />
-            ) : (
-              <GridSkeleton count={FEATURED_COUNT} className={FEATURED_GRID} label="Memuat produk pilihan…" />
-            )}
-          </div>
-        </section>
-      )}
-
+      <HelpStrip models={models} />
       <PaymentStrip />
       <LatestArticles />
-      <HelpStrip />
     </>
   )
 }
@@ -197,50 +214,316 @@ function bannerImage(banner) {
 // scripts/prerender.mjs preloads the same files and has to use this exact string.
 const HERO_SIZES = '(min-width: 1200px) 1152px, (min-width: 640px) calc(100vw - 3rem), calc(100vw - 2rem)'
 
-// Marketplace home pattern: the promo banner leads and nothing competes with it.
+// Banner carousel: the store's own promo banner(s) from WordPress first, then the house banners
+// made by scripts/banners.mjs (new arrivals, instalments, branches). Swipe or tap a dot to move; it
+// also moves on by itself every 3 seconds, and the timer restarts after any touch, drag or dot tap
+// so it never jumps under the user's finger.
+const HERO_DELAY = 3000
+const PROMO_ALT = 'OMG! Oktober makin gede promonya, diskon setiap harinya. Promo dan stok terbatas.'
+
+function heroSlides() {
+  const promo = site.hero.map((b, i) => ({ key: `promo-${i}`, b, href: '/promo', alt: b.alt || PROMO_ALT }))
+  const house = houseBanners.map((b) => ({ key: b.name, b, href: b.href, alt: b.alt }))
+  return [...promo, ...house].map((s) => ({ ...s, img: bannerImage(s.b) })).filter((s) => s.img)
+}
+
 function Hero() {
-  const banner = site.hero[0]
-  const img = bannerImage(banner)
-  if (!img) return null
+  const slides = useMemo(heroSlides, [])
+  const track = useRef(null)
+  const [index, setIndex] = useState(0)
+  const [tick, setTick] = useState(0) // bumped by user input to restart the timer
+  const held = useRef(false) // a finger or mouse button is down on the track
+
+  // On phones the slides are narrower than the track (the next one peeks in), so positions come
+  // from the slides themselves rather than the track width
+  const go = (i, smooth = true) => {
+    const el = track.current
+    if (!el?.children[i]) return
+    el.scrollTo({ left: el.children[i].offsetLeft - el.children[0].offsetLeft, behavior: smooth ? 'smooth' : 'auto' })
+  }
+
+  useEffect(() => {
+    if (slides.length < 2) return
+    const t = setTimeout(() => (held.current ? setTick((n) => n + 1) : go((index + 1) % slides.length)), HERO_DELAY)
+    return () => clearTimeout(t)
+  }, [index, tick, slides.length])
+
+  // The visible slide follows the scroll position, whether a swipe, a dot or the timer moved it
+  const onScroll = () => {
+    const el = track.current
+    const step = el.children[1] ? el.children[1].offsetLeft - el.children[0].offsetLeft : el.clientWidth
+    const i = Math.min(slides.length - 1, Math.round(el.scrollLeft / step))
+    if (i !== index) setIndex(i)
+  }
+  const restart = () => setTick((t) => t + 1)
+  const release = () => {
+    held.current = false
+    restart()
+  }
+
+  if (!slides.length) return null
   return (
-    <section className="band">
+    <section className="band" aria-roledescription="carousel" aria-label="Promo pilihan">
       <div className="container-page py-3 sm:py-5">
-        <Link to="/promo" className="block overflow-hidden rounded-lg">
-          <Img
-            img={img}
-            sizes={HERO_SIZES}
-            priority
-            alt={banner.alt || 'OMG! Oktober makin gede promonya, diskon setiap harinya. Promo dan stok terbatas.'}
-            className="aspect-[2560/871] w-full object-cover"
-          />
-          <span className="sr-only">Lihat semua promo</span>
-        </Link>
+        <div className="group/hero relative">
+          {/* Mouse users get arrows on hover, like the product rails; touch screens swipe */}
+          {slides.length > 1 &&
+            [-1, 1].map((dir) => (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => {
+                  go((index + dir + slides.length) % slides.length)
+                  restart()
+                }}
+                aria-label={dir < 0 ? 'Slide sebelumnya' : 'Slide berikutnya'}
+                className={`hover:text-brand-700 absolute top-1/2 z-10 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-slate-700 opacity-0 shadow-lg ring-1 ring-slate-200 transition-opacity group-focus-within/hero:opacity-100 group-hover/hero:opacity-100 [@media(hover:hover)]:grid ${
+                  dir < 0 ? 'left-2' : 'right-2'
+                }`}
+              >
+                {dir < 0 ? <ChevronLeft className="size-5" /> : <ChevronRight className="size-5" />}
+              </button>
+            ))}
+          <div
+            ref={track}
+            onScroll={onScroll}
+            onPointerDown={() => (held.current = true)}
+            onPointerUp={release}
+            onPointerCancel={release}
+            onTouchStart={() => (held.current = true)}
+            onTouchEnd={release}
+            onWheel={restart}
+            // Phones: the next banner peeks in at the right edge, as on Eraspace; full width from sm
+            className="-mx-4 flex snap-x snap-mandatory scroll-px-4 scrollbar-none gap-2 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:scroll-px-0 sm:gap-0 sm:rounded-lg sm:px-0"
+          >
+            {slides.map((s, i) => (
+              <div
+                key={s.key}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${i + 1} dari ${slides.length}`}
+                className="w-[90%] shrink-0 snap-start sm:w-full"
+              >
+                <Link
+                  to={s.href}
+                  tabIndex={i === index ? undefined : -1}
+                  className="focus-ring-inset block overflow-hidden rounded-lg"
+                >
+                  <Img
+                    img={s.img}
+                    sizes={HERO_SIZES}
+                    priority={i === 0}
+                    alt={s.alt}
+                    className="aspect-[2560/871] w-full object-cover"
+                  />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+        {slides.length > 1 && (
+          <div className="-mb-1 flex justify-center">
+            {slides.map((s, i) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => {
+                  go(i)
+                  restart()
+                }}
+                aria-label={`Slide ${i + 1}`}
+                aria-current={i === index ? 'true' : undefined}
+                // 6px dot inside a 24px hit area; the active one stretches into a bar
+                className="group grid h-6 w-4 place-items-center"
+              >
+                <span
+                  className={`block h-1.5 rounded-full transition-all duration-300 ${
+                    i === index ? 'bg-brand-600 w-3.5' : 'w-1.5 bg-slate-300 group-hover:bg-slate-400'
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )
 }
 
-function BrandStrip() {
-  const withLogo = brands
-    .filter((b) => site.brandLogos[b.slug])
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 16)
+// Shop by kind, Eraspace's category row: a product cut-out (scripts/banners.mjs) in a grey circle
+// with the name under it, five across on phones
+function CategoryRow() {
+  if (!kindShortcuts.length) return null
   return (
-    <section className={SECTION}>
+    <nav aria-label="Kategori" className="band">
+      <ul className="container-page grid grid-cols-5 gap-1 pt-3 pb-1 sm:flex sm:justify-center sm:gap-8 sm:pt-5">
+        {kindShortcuts.map((k) => (
+          <li key={k.id}>
+            <Link
+              to={`/katalog?jenis=${k.id}`}
+              className="group flex flex-col items-center gap-1.5 rounded-lg py-1 text-center"
+            >
+              <span className="grid size-14 place-items-center rounded-full bg-slate-100 p-2.5 transition-colors group-hover:bg-slate-200 sm:size-16">
+                <Img img={k.img} alt="" sizes="64px" className="size-full object-contain" />
+              </span>
+              <span className="text-ink group-hover:text-brand-700 text-xs leading-tight font-semibold">{k.label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+// Eraspace's 2×2 category tiles, here the four biggest brands: name top left, their newest phone
+// cut out and cropped at the bottom right of a grey tile
+function BrandTiles() {
+  if (brandTiles.length < 4) return null
+  return (
+    <section className="band" aria-label="Brand favorit">
+      <ul className="container-page grid grid-cols-2 gap-2 pb-4 sm:pb-6 lg:grid-cols-4 lg:gap-3">
+        {brandTiles.map((b) => (
+          <li key={b.slug}>
+            <Link
+              to={`/brand/${b.slug}`}
+              className="group relative block aspect-[16/10] overflow-hidden rounded-xl bg-slate-100 transition-colors hover:bg-slate-200"
+            >
+              <span className="text-ink absolute top-3 left-3 text-sm font-extrabold sm:top-4 sm:left-4 sm:text-base">
+                {BRAND_CASE[b.slug] ?? b.name}
+              </span>
+              <Img
+                img={b.img}
+                alt=""
+                sizes="(min-width: 1024px) 150px, 30vw"
+                className="absolute -right-2 -bottom-6 h-[105%] w-auto object-contain transition-transform duration-300 group-hover:-translate-y-1"
+              />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// First card of the "Khusus Buatmu" shelf, the way Eraspace opens its recommendation shelf with
+// an illustrated card: a navy card with the shelf's name over a phone cut-out
+function ShelfPoster() {
+  const phone = kindShortcuts.find((k) => k.id === 'phone')
+  return (
+    <Link
+      to="/katalog"
+      className="bg-navy-800 relative flex h-full min-h-56 flex-col overflow-hidden rounded-lg p-3 text-white sm:p-4"
+    >
+      <span className="text-brand-200 text-xs font-bold">Pilihan admin</span>
+      <span className="mt-1 text-lg leading-tight font-extrabold sm:text-xl">Rekomendasi untukmu</span>
+      {phone && (
+        <Img img={phone.img} alt="" sizes="160px" className="absolute -right-4 -bottom-4 h-3/5 w-auto object-contain" />
+      )}
+    </Link>
+  )
+}
+
+// Brand names as the brands write them, where the catalogue data has them title-cased
+const BRAND_CASE = { oppo: 'OPPO', vivo: 'vivo' }
+
+// The store's promises on one navy strip, like Eraspace's "Keuntungan belanja" banner
+function Benefits() {
+  const items = [
+    [BadgeCheck, 'Produk resmi', 'bergaransi'],
+    [CreditCard, 'Cicilan', `${site.payments.length} partner`],
+    [Store, `${site.branchCount} cabang`, `sejak ${site.since}`],
+    [Star, `${ratingScore} di Google`, `${ratingCount} ulasan`],
+  ]
+  return (
+    <section className="band mt-2 py-3 sm:py-4" aria-label="Keuntungan belanja di Complete Selular">
       <div className="container-page">
-        <SectionHeader title="Belanja per Brand" to="/semua-brand" />
-        <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
-          {withLogo.map((b) => (
-            <li key={b.slug}>
-              <Link
-                to={`/brand/${b.slug}`}
-                className="border-line hover:border-brand-300 flex aspect-[3/2] items-center justify-center overflow-hidden rounded-lg border bg-white transition-colors"
-              >
-                {/* The logo files carry ~25% whitespace on every side; scale it away so the marks read */}
-                <Img img={site.brandLogos[b.slug]} alt={b.name} className="size-full scale-125 object-contain" />
-              </Link>
+        <ul className="bg-navy-800 grid grid-cols-4 gap-1 rounded-xl px-2 py-3 text-white sm:px-6 sm:py-4">
+          {items.map(([Icon, top, bottom]) => (
+            <li
+              key={top}
+              className="flex flex-col items-center gap-1 text-center sm:flex-row sm:justify-center sm:gap-3 sm:text-left"
+            >
+              <Icon className="text-brand-200 size-5 shrink-0 sm:size-6" aria-hidden />
+              <span className="text-xs leading-tight sm:text-sm">
+                <span className="block font-bold">{top}</span>
+                <span className="block text-white/75">{bottom}</span>
+              </span>
             </li>
           ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+// Brand logos gliding past like a ticker. Moved with requestAnimationFrame + transform (not a CSS
+// animation), so it stays smooth and keeps running on PCs with Windows animation effects turned
+// off. The list is rendered twice; after one list's width the position wraps back invisibly.
+const BRAND_SPEED = 35 // px per second
+
+function BrandStrip() {
+  const list = brands.filter((b) => site.brandLogos[b.slug]).sort((a, b) => b.total - a.total)
+  const wrap = useRef(null)
+  const track = useRef(null)
+
+  useEffect(() => {
+    const box = wrap.current
+    const el = track.current
+    if (!box || !el) return
+    let pos = 0
+    let last = performance.now()
+    let frame
+    let focused = false
+    const tick = (now) => {
+      const dt = Math.min(now - last, 64) // a background tab must not jump on return
+      last = now
+      const loop = el.offsetWidth / 2
+      if (!focused && loop > 0) {
+        pos = (pos + (BRAND_SPEED * dt) / 1000) % loop
+        el.style.transform = `translate3d(${-pos}px, 0, 0)`
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    // Keyboard users: stop while a logo is focused so the focused one stays where it is
+    const onIn = () => (focused = true)
+    const onOut = (e) => !box.contains(e.relatedTarget) && (focused = false)
+    box.addEventListener('focusin', onIn)
+    box.addEventListener('focusout', onOut)
+    return () => {
+      cancelAnimationFrame(frame)
+      box.removeEventListener('focusin', onIn)
+      box.removeEventListener('focusout', onOut)
+    }
+  }, [])
+
+  const tile = (b, copy) => (
+    <li key={`${b.slug}-${copy}`} className="shrink-0 pr-3" aria-hidden={copy || undefined}>
+      <Link
+        to={`/brand/${b.slug}`}
+        tabIndex={copy ? -1 : undefined}
+        className="flex h-16 w-32 items-center justify-center overflow-hidden rounded-lg bg-white transition-transform hover:-translate-y-0.5 sm:h-20 sm:w-40"
+      >
+        {/* The logo files carry ~25% whitespace on every side; scale it away so the marks read */}
+        <Img img={site.brandLogos[b.slug]} alt={copy ? '' : b.name} className="size-full scale-125 object-contain" />
+      </Link>
+    </li>
+  )
+
+  // White logo cards on a navy band, like Eraspace's "Brand Pilihan"
+  return (
+    <section className="bg-navy-800 mt-2 py-4 sm:py-6">
+      <div className="container-page">
+        <SectionHeader title="Brand Pilihan" to="/semua-brand" tone="dark" />
+      </div>
+      {/* Soft fade at both edges so logos glide in and out instead of being cut off */}
+      <div
+        ref={wrap}
+        className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_5%,#000_95%,transparent)]"
+      >
+        <ul ref={track} className="flex w-max pl-4 will-change-transform sm:pl-6">
+          {list.map((b) => tile(b, false))}
+          {list.map((b) => tile(b, true))}
         </ul>
       </div>
     </section>
@@ -277,35 +560,37 @@ function PromoRail() {
   )
 }
 
-// Ways to pay plus the Google rating: the reassurance a first-time buyer looks for, stated plainly
+// What the buyer wants to know first: you can pay in instalments, and with whom
 function PaymentStrip() {
   return (
     <section className={SECTION}>
-      <div className="container-page grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+      <div className="container-page grid gap-5 lg:grid-cols-[minmax(0,20rem)_1fr] lg:items-center lg:gap-12">
         <div>
-          <h2 className="text-ink text-base font-extrabold sm:text-lg">Cicilan &amp; pembayaran</h2>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {site.payments.map((p) => (
-              <li
-                key={p.name}
-                className="border-line flex h-10 w-20 items-center justify-center overflow-hidden rounded-lg border bg-white p-1.5"
-              >
-                <Img img={p.img} alt={p.name} className="size-full object-contain" />
-              </li>
-            ))}
-          </ul>
+          <h2 className="text-ink text-base font-extrabold sm:text-xl">Cicilan &amp; pembayaran</h2>
+          <p className="text-muted mt-1.5 text-sm leading-relaxed">
+            Tunai, transfer, atau cicilan lewat {site.payments.length} partner resmi.
+          </p>
+          <a
+            href={waLink('Halo admin Complete Selular, saya mau tanya syarat dan simulasi cicilan.')}
+            target="_blank"
+            rel="noopener"
+            className="text-brand-600 hover:text-brand-700 mt-3 inline-flex items-center text-sm font-bold hover:underline pointer-coarse:min-h-11"
+          >
+            Tanya syarat cicilan
+            <span className="sr-only"> lewat WhatsApp (buka di tab baru)</span>
+          </a>
         </div>
-        <p className="border-line text-ink flex items-center gap-3 rounded-lg border px-4 py-3 text-sm">
-          <GoogleIcon className="size-6" />
-          <span className="flex text-amber-400" aria-hidden>
-            {Array.from({ length: 5 }, (_, i) => (
-              <Star key={i} className="size-4 fill-current" />
-            ))}
-          </span>
-          <span>
-            <b>{ratingScore}</b> dari {ratingCount} ulasan Google
-          </span>
-        </p>
+        <ul className="grid grid-cols-4 gap-2 sm:gap-3">
+          {site.payments.map((p) => (
+            <li
+              key={p.name}
+              className="border-line flex aspect-[5/2] items-center justify-center rounded-lg border bg-white p-2 sm:p-3"
+            >
+              {/* Fixed box + object-contain: every partner logo gets the same visual weight */}
+              <Img img={p.img} alt={p.name} className="size-full object-contain" />
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )
@@ -315,7 +600,8 @@ function LatestArticles() {
   const { data, error, retry } = usePosts()
   const [ref, onRetry] = useRetryFocus(retry)
   if (data && !data.length) return null
-  // Four cards: the fourth fills the 2×2 grid on tablets and is dropped again in the 3-column row.
+  // Phones: a compact list (small cover beside the title) instead of three screen-tall cards.
+  // From sm: cards; the fourth fills the 2×2 grid on tablets and is dropped again in the 3-column row.
   const slot = (i) => (i === 3 ? 'hidden sm:block lg:hidden' : undefined)
   return (
     <section ref={ref} className={`${SECTION} [&_h2:focus]:outline-none`}>
@@ -324,18 +610,21 @@ function LatestArticles() {
         {error ? (
           <ErrorState onRetry={onRetry} title="Gagal memuat artikel" as="h3" />
         ) : data ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="divide-line -my-3 divide-y sm:my-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:divide-y-0 lg:grid-cols-3">
             {data.slice(0, 4).map((a, i) => (
               <li key={a.slug} className={slot(i)}>
-                <Link to={`/artikel/${a.slug}`} className="group card block h-full overflow-hidden">
+                <Link
+                  to={`/artikel/${a.slug}`}
+                  className="group sm:card flex h-full gap-3 py-3 sm:block sm:overflow-hidden sm:py-0"
+                >
                   <Img
                     img={a.cover}
                     alt=""
-                    sizes="(min-width: 1024px) 370px, (min-width: 640px) 50vw, 100vw"
+                    sizes="(min-width: 1024px) 370px, (min-width: 640px) 50vw, 96px"
                     // Covers are mostly square posters with text on them: show them whole, never cropped
-                    className="aspect-[4/3] w-full bg-slate-100 object-contain"
+                    className="size-24 shrink-0 rounded-lg bg-slate-100 object-contain sm:aspect-[4/3] sm:size-auto sm:w-full sm:rounded-none"
                   />
-                  <div className="p-3">
+                  <div className="min-w-0 sm:p-3">
                     <p className="text-muted text-xs">
                       <time dateTime={a.date}>{formatDate(a.date)}</time>
                     </p>
@@ -348,13 +637,13 @@ function LatestArticles() {
             ))}
           </ul>
         ) : (
-          <div role="status" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div role="status" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <span className="sr-only">Memuat artikel…</span>
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} aria-hidden className={`card overflow-hidden ${slot(i) ?? ''}`}>
-                <div className="skeleton aspect-[4/3]" />
+              <div key={i} aria-hidden className={`sm:card flex gap-3 sm:block sm:overflow-hidden ${slot(i) ?? ''}`}>
+                <div className="skeleton size-24 shrink-0 rounded-lg sm:aspect-[4/3] sm:size-auto sm:rounded-none" />
                 {/* Same line boxes as the real card: 16px date, then 24px title lines */}
-                <div className="p-3">
+                <div className="min-w-0 flex-1 sm:p-3">
                   <div className="skeleton my-0.5 h-3 w-24 rounded" />
                   <div className="skeleton mt-2 h-4 w-full rounded" />
                   <div className="skeleton mt-2 mb-1 h-4 w-full rounded sm:mb-0 xl:mb-1" />
@@ -369,18 +658,65 @@ function LatestArticles() {
   )
 }
 
-// One plain line of help instead of a promotional card
-function HelpStrip() {
+// "Bingung pilih HP?" answered like a marketplace shelf: pick a budget tab, the phones in that
+// range appear right below (handsets first, newest first), with a link to the filtered catalogue.
+const DEFAULT_BUDGET = '2-5'
+
+function budgetShelf(models, range) {
+  const isDevice = (m) => DEVICES.has(productKind(m.name))
+  const inRange = (models ?? []).filter((m) => m.minPrice && m.minPrice >= range.min && m.minPrice < range.max)
+  const byDate = [...inRange].sort(newestFirst)
+  return [...byDate.filter(isDevice), ...byDate.filter((m) => !isDevice(m))].slice(0, 12)
+}
+
+function HelpStrip({ models }) {
+  const [active, setActive] = useState(DEFAULT_BUDGET)
+  const range = PRICE_RANGES.find((r) => r.id === active)
+  const shelf = useMemo(() => budgetShelf(models, range), [models, range])
   return (
     <section className={`${SECTION} mb-2`}>
-      <div className="container-page flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-ink text-sm">
-          <b>Bingung pilih HP?</b> Tanya admin soal stok, cicilan dan promo — gratis.
-        </p>
-        <a href={waLink()} target="_blank" rel="noopener" className="btn-wa self-start sm:self-auto">
-          <WhatsAppIcon className="size-4" /> Chat via WhatsApp
-          <span className="sr-only"> (buka di tab baru)</span>
-        </a>
+      <div className="container-page">
+        <SectionHeader title="Cari HP sesuai budget" />
+        <div
+          role="group"
+          aria-label="Pilih budget"
+          className="-mx-4 mb-4 flex scrollbar-none gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+        >
+          {PRICE_RANGES.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              aria-pressed={r.id === active}
+              onClick={() => setActive(r.id)}
+              className={`chip shrink-0 ${
+                r.id === active
+                  ? 'border-brand-600 bg-brand-600 text-white'
+                  : 'border-line text-ink hover:border-brand-300 bg-white'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        {!models ? (
+          <RailSkeleton label="Memuat produk…">
+            <CardSkeleton />
+          </RailSkeleton>
+        ) : (
+          <Rail key={active}>
+            {shelf.map((m) => (
+              <ProductCard key={m.key} p={m} showNewBadge={false} sizes={RAIL_SIZES} />
+            ))}
+          </Rail>
+        )}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
+          <Link
+            to={`/katalog?harga=${range.id}`}
+            className="text-brand-600 hover:text-brand-700 font-bold hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+          >
+            Lihat semua {range.label.toLowerCase()}
+          </Link>
+        </div>
       </div>
     </section>
   )

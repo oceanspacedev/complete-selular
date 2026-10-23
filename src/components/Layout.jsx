@@ -2,11 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { ArrowRight, ChevronRight, CircleAlert, GitCompareArrows, Menu, Search, X } from 'lucide-react'
 import site from '../data/site.json'
-import branches from '../data/branches.json'
 import { ariaCurrent, bottomNav, footerNav, mainNav, moreNav, navMatch } from './nav'
 import { socials, WhatsAppIcon } from './icons'
 import { waLink } from '../lib/wa'
-import { useCompare, useCompareNotice } from '../lib/compare'
+import { compare, useCompare, useCompareNotice } from '../lib/compare'
 import Dialog from './Dialog'
 import Img from './Img'
 
@@ -25,6 +24,10 @@ export default function Layout() {
   const floatHidden = !useScrolledPast(HOME_FLOAT_OFFSET, pathname === '/')
   // Product pages render their own sticky buy bar below lg, so the floating extras step aside there
   const onProduct = pathname.startsWith('/product/')
+  // One always-there WhatsApp entry per screen: this floating button on phones, "Chat Admin" in the
+  // header from md. Pages only add a green button when it sends a specific message (product, branch).
+  // The compare table has a "Beli" button per column and the floating one would cover the last column.
+  const fabHidden = onProduct || pathname === '/bandingkan'
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -42,13 +45,12 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
-      <CompareBar hideBelowLg={onProduct} hidden={floatHidden} />
       <a
         href={waLink()}
         target="_blank"
         rel="noopener"
         aria-label="Chat admin via WhatsApp (buka di tab baru)"
-        className={`site-fab bg-wa-600 hover:bg-wa-700 fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 size-14 place-items-center rounded-full text-white shadow-lg shadow-slate-900/25 transition-[background-color,scale,translate,opacity,visibility] duration-200 active:scale-95 lg:bottom-6 ${onProduct ? 'hidden lg:grid' : 'grid'} ${floatHidden ? 'invisible translate-y-3 opacity-0' : ''}`}
+        className={`site-fab bg-wa-600 hover:bg-wa-700 fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 size-14 place-items-center rounded-full text-white shadow-lg shadow-slate-900/25 transition-[background-color,scale,translate,opacity,visibility] duration-200 active:scale-95 ${fabHidden ? 'hidden' : 'grid md:hidden'} ${floatHidden ? 'invisible translate-y-3 opacity-0' : ''}`}
       >
         <WhatsAppIcon className="size-7" />
       </a>
@@ -338,17 +340,15 @@ function Header() {
   const compareCount = useCompare().length
   const { pathname, search } = useLocation()
   return (
+    // The whole header stays pinned. Phones: a 48px logo row over a 52px search row (100px);
+    // from sm it is one 64px row (+ the lg nav strip).
     <header className="site-header bg-navy-700 sticky top-0 z-40 text-white">
-      <div className="container-page flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5 sm:flex-nowrap sm:py-3">
+      <div className="container-page flex h-12 items-center gap-4 sm:h-16">
         <Link to="/" state={RESET} className="shrink-0 rounded-lg" aria-label="Complete Selular — Beranda">
-          <Img img={site.logo} eager sizes="160px" alt="Complete Selular" className="h-8 w-auto sm:h-9" />
+          <Img img={site.logo} eager sizes="160px" alt="Complete Selular" className="h-7 w-auto sm:h-9" />
         </Link>
 
-        {/* Full-width second row on phones, between logo and icons from sm */}
-        <SearchForm
-          key={pathname}
-          className="order-last basis-full sm:order-none sm:mx-auto sm:max-w-xl sm:basis-auto"
-        />
+        <SearchForm key={pathname + search} className="mx-auto hidden max-w-xl sm:flex" />
 
         <div className="ml-auto flex items-center gap-1 sm:ml-0">
           <a
@@ -379,6 +379,10 @@ function Header() {
         </div>
       </div>
 
+      <div className="container-page flex h-13 items-start sm:hidden">
+        <SearchForm key={pathname + search + '-m'} />
+      </div>
+
       <nav className="bg-navy-800 hidden lg:block" aria-label="Navigasi utama">
         <ul className="container-page flex h-11 items-stretch gap-1">
           {mainNav.map((n) => {
@@ -405,13 +409,12 @@ function Header() {
 /* ---------- Bottom nav + "Lainnya" sheet (below lg) ---------- */
 
 const tabClass =
-  'group focus-ring-inset relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold text-muted select-none active:bg-slate-50'
+  'group focus-ring-inset relative flex flex-1 flex-col items-center justify-center gap-1 text-xs font-semibold text-muted select-none active:bg-slate-50'
 
-// Active tab: brand colour plus a short bar on top, so the state does not rely on colour alone
+// Active tab: brand colour plus a heavier icon stroke and bold label (no colour-only cue)
 function TabIcon({ icon: Icon, active }) {
   return (
     <>
-      {active && <span aria-hidden className="bg-brand-600 absolute top-0 h-0.5 w-8 rounded-b" />}
       <Icon
         className={`size-[22px] ${active ? 'text-brand-600' : ''}`}
         strokeWidth={active ? 2.25 : 1.75}
@@ -452,7 +455,7 @@ function BottomNav() {
               <li key={n.to} className="flex">
                 <Link to={n.to} state={RESET} aria-current={ariaCurrent(match)} className={tabClass}>
                   <TabIcon icon={n.icon} active={!!match} />
-                  <span className={match ? 'text-brand-700' : undefined}>{n.label}</span>
+                  <span className={match ? 'text-brand-700 font-extrabold' : undefined}>{n.label}</span>
                 </Link>
               </li>
             )
@@ -466,7 +469,7 @@ function BottomNav() {
               className={tabClass}
             >
               <TabIcon icon={Menu} active={moreActive} />
-              <span className={moreActive ? 'text-brand-700' : undefined}>Lainnya</span>
+              <span className={moreActive ? 'text-brand-700 font-extrabold' : undefined}>Lainnya</span>
             </button>
           </li>
         </ul>
@@ -509,47 +512,16 @@ function BottomNav() {
   )
 }
 
-/* ---------- Compare pill + toast ---------- */
+/* ---------- Compare toast ---------- */
 
-function CompareBar({ hideBelowLg, hidden }) {
-  const n = useCompare().length
-  const { pathname } = useLocation()
-  if (!n || pathname === '/bandingkan') return null
-  // With one product the compare page asks for a second one, so the label promises a view, not a comparison
-  const action = n > 1 ? 'Bandingkan' : 'Lihat perbandingan'
-  // The pill must fit beside the WhatsApp button: the longer one-product label sheds words sooner
-  // (below 360px only the action is left; the header icon still shows the count)
-  const countClass = n > 1 ? '' : 'max-[359px]:hidden'
-  const wordClass = n > 1 ? 'max-[359px]:hidden' : 'max-[409px]:hidden'
-  return (
-    // The wrapper spans the free space beside the WhatsApp button but lets taps through to the page;
-    // only the pill itself is clickable. It is vertically centred on the button.
-    <div
-      className={`site-fab pointer-events-none fixed inset-x-0 bottom-[calc(5.375rem+env(safe-area-inset-bottom))] z-30 flex justify-center pr-[5.25rem] pl-4 lg:bottom-[1.875rem] lg:justify-end ${hideBelowLg ? 'max-lg:hidden' : ''}`}
-    >
-      <Link
-        to="/bandingkan"
-        aria-label={`${n} produk dipilih, ${action.toLowerCase()}`}
-        className={`pointer-events-auto flex min-h-11 items-center gap-2 rounded-full bg-slate-900 py-2 pr-4 pl-3.5 text-sm whitespace-nowrap text-white shadow-xl ring-1 ring-white/20 transition-[background-color,scale,translate,opacity,visibility] duration-200 hover:bg-slate-800 active:scale-[0.97] ${hidden ? 'invisible translate-y-3 opacity-0' : ''}`}
-      >
-        <GitCompareArrows className="size-4 shrink-0" aria-hidden />
-        <span className={countClass}>
-          {n} <span className={wordClass}>produk </span>dipilih
-        </span>
-        <span aria-hidden className={`text-slate-400 ${countClass}`}>
-          ·
-        </span>
-        <span className="font-semibold">{action}</span>
-      </Link>
-    </div>
-  )
-}
-
-// Visible counterpart of the compare announcements for a refused add ("Maksimal 3 produk"), which
-// otherwise only reaches screen readers. compare.js already speaks it, so this is not a live region.
-// It stays while hovered or focused so there is time to reach its link.
+// Visible counterpart of two compare announcements, which otherwise only reach screen readers: a
+// product added from a card (the header icon keeps the count afterwards) and a refused add
+// ("Maksimal 3 produk"). The product page shows its own line under the button, so adds there stay
+// silent. compare.js already speaks both, so this is not a live region. It stays while hovered or
+// focused so there is time to reach its link.
 function CompareToast() {
   const notice = useCompareNotice()
+  const count = useCompare().length
   const { pathname } = useLocation()
   const [toast, setToast] = useState(null)
   const held = useRef(false)
@@ -580,14 +552,15 @@ function CompareToast() {
   }
 
   useEffect(() => {
-    if (notice?.kind !== 'full') {
-      // A later add or remove makes "the list is full" stale
+    const shown = notice?.kind === 'full' || (notice?.kind === 'added' && !pathname.startsWith('/product/'))
+    if (!shown) {
+      // A later remove makes an earlier message stale
       if (notice && !held.current) setToast(null)
       return
     }
     held.current = false
     setToast(notice)
-    hideAfter(5000)
+    hideAfter(notice.kind === 'full' ? 5000 : 3000)
   }, [notice])
 
   useEffect(close, [pathname])
@@ -603,17 +576,18 @@ function CompareToast() {
         onFocus={hold}
         onBlur={release}
         onKeyDown={(e) => e.key === 'Escape' && close()}
-        className="toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg bg-slate-900 py-3 pr-2 pl-4 text-sm text-white shadow-xl ring-1 ring-white/15"
+        className="toast-in bg-navy-800 pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg py-3 pr-2 pl-4 text-sm text-white shadow-xl ring-1 ring-white/15"
       >
-        <CircleAlert className="mt-0.5 size-5 shrink-0 text-amber-300" aria-hidden />
+        {toast.kind === 'full' && <CircleAlert className="mt-0.5 size-5 shrink-0 text-amber-300" aria-hidden />}
         <div className="min-w-0 flex-1">
-          <p>{toast.text}</p>
+          <p>{toast.kind === 'full' ? toast.text : `Ditambahkan ke perbandingan (${count} dari ${compare.max})`}</p>
           {pathname !== '/bandingkan' && (
             <Link
               to="/bandingkan"
               className="text-brand-200 -my-1 mt-0.5 inline-flex min-h-9 items-center gap-1 font-semibold underline-offset-2 hover:text-white hover:underline pointer-coarse:min-h-11"
             >
-              Buka Bandingkan <ArrowRight className="size-4" aria-hidden />
+              {toast.kind === 'full' ? 'Buka Bandingkan' : 'Lihat perbandingan'}{' '}
+              <ArrowRight className="size-4" aria-hidden />
             </Link>
           )}
         </div>
@@ -621,7 +595,7 @@ function CompareToast() {
           type="button"
           onClick={close}
           aria-label="Tutup pesan"
-          className="-my-1 grid size-9 shrink-0 place-items-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:size-11"
+          className="-my-1 grid size-9 shrink-0 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:size-11"
         >
           <X className="size-4" aria-hidden />
         </button>
@@ -633,96 +607,71 @@ function CompareToast() {
 /* ---------- Footer ---------- */
 
 // site.json used to carry slugs; newer data has display names, which pass through unchanged
-const PAYMENT_NAMES = {
-  kredivo: 'Kredivo',
-  akulaku: 'Akulaku',
-  spaylater: 'SPayLater',
-  homecredit: 'Home Credit',
-  blibliinstore: 'Blibli InStore',
-  baf: 'BAF',
-  travelokaspayl: 'Traveloka PayLater',
-  samsungfplus: 'Samsung Finance+',
-}
-const paymentName = (name) => PAYMENT_NAMES[name] ?? name
-
-// "6281121101168" → "+62 811-2110-1168"
-const formatPhone = (d) => `+${d.slice(0, 2)} ${d.slice(2, 5)}-${d.slice(5, 9)}-${d.slice(9)}`
-
+// Light marketplace footer (like Eraspace): colour logo, plain link columns and the official
+// online stores, then a thin navy strip. The strip also carries the space the mobile bottom nav
+// and WhatsApp button need, so no empty white band is left under the content.
 function Footer() {
   const year = new Date().getFullYear()
-  const cities = [...new Set(branches.map((b) => b.city))].slice(0, 6)
   return (
-    <footer className="site-footer bg-navy-900 pb-[calc(9.5rem+env(safe-area-inset-bottom))] text-[13px] text-slate-300 lg:pb-0">
-      <div className="container-page py-6 sm:py-8">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr] lg:gap-x-8">
-          <div className="col-span-2 lg:col-span-1">
-            <Img img={site.logo} alt="Complete Selular" className="h-8 w-auto" />
-            <p className="mt-3 max-w-sm leading-relaxed">
-              Toko HP, tablet &amp; aksesoris resmi sejak {site.since}, dengan {site.branchCount} cabang di Indonesia.
-            </p>
-            <ul className="mt-3 -ml-2 flex gap-1">
-              {site.socials.map((s) => {
-                const social = socials[s.name]
-                if (!social) return null
-                const Icon = social.icon
-                return (
-                  <li key={s.name}>
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener"
-                      aria-label={`Complete Selular di ${social.label} (buka di tab baru)`}
-                      className="grid size-9 place-items-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:size-11"
-                    >
-                      <Icon className="size-[18px]" />
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          <FooterCol title="Belanja" items={footerNav.belanja} />
-          <FooterCol title="Informasi" items={footerNav.informasi} />
-
-          <div className="col-span-2 lg:col-span-1">
-            <h2 className="mb-2 text-[13px] font-bold text-white">Hubungi Kami</h2>
-            <a
-              href={waLink()}
-              target="_blank"
-              rel="noopener"
-              className="inline-flex items-center gap-1.5 font-semibold text-white hover:underline pointer-coarse:min-h-11"
-            >
-              <WhatsAppIcon className="size-4" />
-              <span>
-                <span className="sr-only">WhatsApp </span>
-                {formatPhone(site.whatsapp)}
-                <span className="sr-only"> (buka di tab baru)</span>
-              </span>
-            </a>
-            <p className="mt-1 leading-relaxed">Cabang di {cities.join(', ')} &amp; kota lainnya.</p>
-          </div>
+    <footer className="site-footer border-line text-muted border-t bg-white text-sm">
+      {/* Phones too get the two link columns side by side; brand and contact blocks span the row */}
+      <div className="container-page grid grid-cols-2 gap-x-4 gap-y-8 py-8 sm:py-10 lg:grid-cols-[1.4fr_1fr_1fr_1.4fr] lg:gap-10">
+        <div className="col-span-2 lg:col-span-1">
+          <Img img={site.logoAlt} alt="Complete Selular" className="h-9 w-auto" />
+          <p className="mt-3 max-w-xs leading-relaxed">
+            Toko HP, tablet &amp; aksesoris resmi sejak {site.since}, dengan {site.branchCount} cabang.
+          </p>
+          <ul className="mt-4 -ml-2 flex gap-1">
+            {site.socials.map((s) => {
+              const social = socials[s.name]
+              if (!social) return null
+              const Icon = social.icon
+              return (
+                <li key={s.name}>
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener"
+                    aria-label={`Complete Selular di ${social.label} (buka di tab baru)`}
+                    className="text-muted hover:text-brand-700 grid size-10 place-items-center rounded-lg transition-colors hover:bg-slate-100 pointer-coarse:size-11"
+                  >
+                    <Icon className="size-5" />
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
         </div>
 
-        <div className="mt-6 border-t border-white/10 pt-4">
-          <h2 className="mb-2 text-[13px] font-bold text-white">Cicilan &amp; pembayaran</h2>
+        <FooterCol title="Belanja" items={footerNav.belanja} />
+        <FooterCol title="Informasi" items={footerNav.informasi} />
+
+        <div className="col-span-2 lg:col-span-1">
+          <h2 className="text-ink mb-3 text-sm font-bold">Toko online resmi</h2>
           <ul className="flex flex-wrap gap-2">
-            {site.payments.map((p) => (
-              <li
-                key={p.name}
-                className="flex h-8 w-16 items-center justify-center overflow-hidden rounded bg-white p-1"
-              >
-                {/* Fixed box + object-contain: wide or tall logos (BAF) scale down instead of spilling out */}
-                <Img img={p.img} alt={paymentName(p.name)} className="size-full object-contain" />
-              </li>
-            ))}
+            {site.marketplaces
+              .filter((m) => m.img)
+              .map((m) => (
+                <li key={m.name}>
+                  <a
+                    href={m.url}
+                    target="_blank"
+                    rel="noopener"
+                    className="border-line hover:border-brand-300 flex h-9 w-[4.5rem] items-center justify-center overflow-hidden rounded-lg border bg-white p-1.5 transition-colors"
+                  >
+                    <Img img={m.img} alt={`${m.name} (buka di tab baru)`} className="size-full object-contain" />
+                  </a>
+                </li>
+              ))}
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10">
-        <p className="container-page py-3 text-xs text-slate-400">
-          © {year} Complete Selular. Hak cipta dilindungi undang-undang.
-        </p>
+
+      <div className="bg-navy-900 pb-[calc(9.5rem+env(safe-area-inset-bottom))] text-xs text-white/70 lg:pb-0">
+        <div className="container-page flex flex-col gap-1 py-4 sm:flex-row sm:justify-between">
+          <p>© {year} Complete Selular</p>
+          <p>Harga dan stok dapat berubah sewaktu-waktu.</p>
+        </div>
       </div>
     </footer>
   )
@@ -731,14 +680,14 @@ function Footer() {
 function FooterCol({ title, items }) {
   return (
     <div>
-      <h2 className="mb-2 text-[13px] font-bold text-white">{title}</h2>
-      <ul className="flex flex-col items-start gap-1.5 pointer-coarse:gap-0">
+      <h2 className="text-ink mb-3 text-sm font-bold">{title}</h2>
+      <ul className="flex flex-col items-start gap-2.5 pointer-coarse:gap-0.5">
         {items.map((n) => (
           <li key={n.to}>
             <Link
               to={n.to}
               state={RESET}
-              className="inline-flex items-center text-slate-300 transition-colors hover:text-white hover:underline pointer-coarse:min-h-9"
+              className="text-muted hover:text-brand-700 inline-flex items-center transition-colors hover:underline pointer-coarse:min-h-9"
             >
               {n.label}
             </Link>

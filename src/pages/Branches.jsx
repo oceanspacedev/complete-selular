@@ -1,8 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ExternalLink, MapPin, Search, X } from 'lucide-react'
+import { ExternalLink, Search, X } from 'lucide-react'
 import branches from '../data/branches.json'
-import site from '../data/site.json'
 import { waLink } from '../lib/wa'
 import { WhatsAppIcon } from '../components/icons'
 import PageHeader from '../components/PageHeader'
@@ -29,17 +28,33 @@ const PROVINCE = {
   Tegal: JATENG,
 }
 
+// The street and district only: RT/RW, the city, regency, province and postcode repeat the city heading
+const DROP_PART = /^(rt|rw)\b|^(kab(upaten)?\.?|kota)\s|^jawa (barat|tengah)\b|^\d{5}$/i
+const shortAddress = ({ address, city }) =>
+  address
+    .split(/,\s*/)
+    .filter((part) => part.trim() !== city && !DROP_PART.test(part.trim()))
+    .join(', ')
+
 // Each address part (between commas) is compacted on its own and kept apart, so a phrase never
 // matches across parts: "cirebon ciledug" must not treat "…, Cirebon, Ciledug, …" as a phrase hit
 const indexed = branches.map((b) => ({
   ...b,
+  short: shortAddress(b),
+  // ?cabang= value: "Complete Selular Jatiwangi 2" -> "complete-selular-jatiwangi-2"
+  slug: b.name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, ''),
   hay: [b.name, b.city, ...b.address.split(/[,()]/), ...(PROVINCE[b.city] ?? [])]
     .map(compact)
     .filter(Boolean)
     .join(' '),
 }))
 
-// Chip order is fixed (most branches first) so chips don't jump around while the counts change
+// Chip order is fixed (most branches first) so chips don't jump around while searching
 const CITIES = (() => {
   const counts = {}
   for (const b of branches) counts[b.city] = (counts[b.city] ?? 0) + 1
@@ -67,6 +82,23 @@ function withParams(params, changes) {
 
 const WA_GENERAL =
   'Halo admin Complete Selular, saya mau tanya alamat cabang Complete Selular terdekat dari lokasi saya.'
+
+const waStock = (b) => waLink(`Halo admin Complete Selular, saya mau tanya stok di cabang ${b.name}.`)
+const mapSrc = (b) => `https://www.google.com/maps?q=${encodeURIComponent(`${b.name}, ${b.address}`)}&output=embed`
+
+// lg and up: list + sticky map side by side. Below that each row opens its own map inline.
+const DESKTOP = '(min-width: 64rem)'
+function useMediaQuery(query) {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(query)
+      m.addEventListener('change', cb)
+      return () => m.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(query).matches,
+    () => false,
+  )
+}
 
 export default function Branches() {
   const [params, setParams] = useSearchParams()
@@ -100,17 +132,55 @@ export default function Branches() {
   }, [needle, urlQ, params])
 
   const found = useMemo(() => search(needle), [needle])
-  const counts = useMemo(() => {
-    const c = {}
-    for (const b of found) c[b.city] = (c[b.city] ?? 0) + 1
-    return c
-  }, [found])
   const list = city ? found.filter((b) => b.city === city) : found
+  // Grouped by city in chip order; `ordered` is the list exactly as it appears on screen
+  const groups = CITIES.map((c) => ({ city: c, items: list.filter((b) => b.city === c) })).filter((g) => g.items.length)
+  const ordered = groups.flatMap((g) => g.items)
+
+  // ?cabang= holds the chosen branch. On desktop the map always shows one, so the first result
+  // stands in when nothing (or a branch the filters now hide) is chosen; on smaller screens it is
+  // the one opened row, and no row is open by default.
+  const desktop = useMediaQuery(DESKTOP)
+  const cabang = params.get('cabang') ?? ''
+  const picked = ordered.find((b) => b.slug === cabang)
+  const selected = desktop ? (picked ?? ordered[0]) : picked
+
+  // A shared ?cabang= link scrolls its row into view; so does a row opened on a phone, whose map
+  // would otherwise unfold below the fold
+  const reveal = useRef(cabang)
+  useEffect(() => {
+    if (!reveal.current || !picked || reveal.current !== picked.slug) return
+    reveal.current = ''
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document.getElementById(`cabang-${picked.slug}`)?.scrollIntoView({
+      block: 'nearest',
+      behavior: smooth ? 'smooth' : 'auto',
+    })
+  }, [picked])
+
+  const choose = (b) => update({ cabang: b.slug })
+  const toggle = (b) => {
+    const open = picked?.slug !== b.slug
+    reveal.current = open ? b.slug : ''
+    update({ cabang: open ? b.slug : '' })
+  }
 
   const inputRef = useRef(null)
   const allChipRef = useRef(null)
   const barRef = useRef(null)
   const resultsRef = useRef(null)
+
+  // The sticky search band changes height with the breakpoint and chip wrapping; the map panel and
+  // the rows' scroll margins sit below it through --band (86px, its one-row desktop height, until measured)
+  const [band, setBand] = useState(0)
+  useLayoutEffect(() => {
+    const el = barRef.current
+    const measure = () => setBand(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // When the list changes while the user is scrolled deep into it, bring the result count
   // back up under the sticky bar instead of leaving them in the footer of a shorter list
@@ -123,7 +193,9 @@ export default function Branches() {
     if (bar && top != null && top < bar.bottom) window.scrollBy(0, top - bar.bottom - 12)
   }, [city, needle])
 
-  const selectCity = (c) => update({ kota: c, q: needle }, { push: true })
+  // A chosen branch outside the new city is dropped, so the URL never names a branch the map isn't showing
+  const selectCity = (c) =>
+    update({ kota: c, q: needle, ...(c && picked && picked.city !== c ? { cabang: '' } : {}) }, { push: true })
   const showAllCities = () => {
     selectCity('')
     allChipRef.current?.focus()
@@ -148,24 +220,13 @@ export default function Branches() {
         title="Toko Cabang"
         description={`Daftar ${branches.length} toko cabang Complete Selular beserta alamat dan petunjuk arah lewat Google Maps.`}
       />
-      <PageHeader
-        title="Toko Cabang"
-        subtitle={`Alamat dan petunjuk arah ${branches.length} cabang yang sudah tercantum online, dari total ${site.branchCount} cabang Complete Selular.`}
-      >
-        <a
-          href={waLink(WA_GENERAL)}
-          target="_blank"
-          rel="noopener"
-          className="text-wa-700 mt-1 inline-flex min-h-8 items-center gap-1.5 rounded text-[13px] font-bold underline-offset-2 hover:underline pointer-coarse:min-h-11"
-        >
-          <WhatsAppIcon className="size-4" /> Cabang lain? Tanya lewat WhatsApp
-        </a>
-      </PageHeader>
+      <PageHeader title="Toko Cabang" subtitle={`${branches.length} cabang di Jawa Barat & Jawa Tengah`} />
 
-      {/* Sits right under the sticky site header: 116px tall on phones, 64px from sm, 108px with the nav row from lg */}
+      {/* Phones: scrolls with the page so only the site header stays pinned. From sm it sits right under the
+          sticky header (64px, 108px with the nav row from lg). */}
       <div
         ref={barRef}
-        className="border-line sticky top-[116px] z-20 mt-2 border-y bg-white sm:top-16 lg:top-[108px] [@media(max-height:30rem)]:static"
+        className="border-line z-20 mt-2 border-y bg-white sm:sticky sm:top-16 lg:top-[108px] [@media(max-height:30rem)]:static"
       >
         <form
           role="search"
@@ -214,7 +275,6 @@ export default function Branches() {
             <ChipRow label="Filter kota" active={city}>
               {['', ...CITIES].map((c) => {
                 const active = city === c
-                const n = c ? (counts[c] ?? 0) : found.length
                 return (
                   <button
                     key={c || 'all'}
@@ -228,11 +288,7 @@ export default function Branches() {
                         : 'border-line text-ink hover:border-brand-300 bg-white'
                     }`}
                   >
-                    {c || 'Semua'}{' '}
-                    <span className={`font-medium ${active ? 'text-brand-700' : 'text-muted'}`}>
-                      {n}
-                      <span className="sr-only"> cabang</span>
-                    </span>
+                    {c || 'Semua'}
                   </button>
                 )
               })}
@@ -241,64 +297,68 @@ export default function Branches() {
         </form>
       </div>
 
-      <div ref={resultsRef} className="container-page py-3 sm:py-4">
-        <p role="status" className="text-muted mb-2 text-[13px] sm:mb-3">
+      <div
+        ref={resultsRef}
+        style={band ? { '--band': `${band}px` } : undefined}
+        className="container-page py-3 sm:py-4"
+      >
+        {/* Always announced; only shown while a filter or search narrows the list */}
+        <p role="status" className={!city && !needle ? 'sr-only' : 'text-muted mb-2 text-[13px] sm:mb-3'}>
           {status}
         </p>
 
         {list.length ? (
           <>
-            {/* Opted out of scroll anchoring: when a filter removes the anchored card Chrome jumps to the
-                top of the page, and the effect above already places the new results */}
-            <div className="grid gap-2 [overflow-anchor:none] sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-              {list.map((b) => (
-                <article key={b.name + b.address} className="card flex flex-col p-3 sm:p-4">
-                  <h2 className="text-ink text-sm font-bold">{b.name}</h2>
-                  <p className="text-muted text-xs">{b.city}</p>
-                  <p className="text-ink mt-1.5 flex-1 text-sm leading-relaxed break-words">{b.address}</p>
-                  {b.maps && (
-                    <a
-                      href={b.maps}
-                      target="_blank"
-                      rel="noopener"
-                      aria-label={`Petunjuk arah ke ${b.name} (Google Maps, tab baru)`}
-                      // Keeps keyboard focus clear of the sticky search bar when the browser scrolls it into view
-                      className="text-brand-600 hover:text-brand-700 mt-2 inline-flex min-h-8 scroll-mt-40 items-center gap-1 self-start rounded text-[13px] font-bold hover:underline sm:scroll-mt-32 pointer-coarse:min-h-11 [@media(max-height:30rem)]:scroll-mt-0"
-                    >
-                      Petunjuk arah
-                      <ExternalLink className="size-3.5" aria-hidden />
-                    </a>
-                  )}
-                </article>
-              ))}
+            <div className="lg:grid lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-start lg:gap-4">
+              {/* Opted out of scroll anchoring: when a filter removes the anchored row Chrome jumps to the
+                  top of the page, and the effect above already places the new results */}
+              {/* Phones: one white band edge to edge, like the home sections; a rounded card from sm */}
+              <div className="border-line sm:card -mx-4 border-y bg-white [overflow-anchor:none] sm:mx-0 sm:overflow-hidden sm:border-0">
+                {groups.map((g, i) => (
+                  <section key={g.city} aria-labelledby={`kota-${g.city}`} className={i ? 'border-line border-t' : ''}>
+                    <h2 id={`kota-${g.city}`} className="text-ink px-4 pt-4 pb-1 text-sm font-extrabold">
+                      {g.city}
+                    </h2>
+                    <ul className="divide-line divide-y">
+                      {g.items.map((b) => (
+                        <BranchRow
+                          key={b.slug}
+                          b={b}
+                          desktop={desktop}
+                          active={selected?.slug === b.slug}
+                          onSelect={() => (desktop ? choose(b) : toggle(b))}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+
+              {desktop && selected && <MapPanel b={selected} />}
             </div>
 
-            <section className="card mt-3 flex flex-col items-start gap-3 p-4 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-ink text-sm font-bold">Cabang terdekatmu belum ada di daftar?</h2>
-                <p className="text-muted mt-1 text-sm">
-                  Daftar ini baru memuat {branches.length} dari {site.branchCount} cabang Complete Selular. Kirim
-                  lokasimu lewat WhatsApp, admin kami bantu carikan cabang terdekat.
-                </p>
-              </div>
-              <a href={waLink(WA_GENERAL)} target="_blank" rel="noopener" className="btn-wa shrink-0">
-                <WhatsAppIcon className="size-4" /> Tanya via WhatsApp
+            <p className="text-muted mt-3 px-1 text-sm sm:mt-4">
+              Cabang terdekat belum ada?{' '}
+              <a
+                href={waLink(WA_GENERAL)}
+                target="_blank"
+                rel="noopener"
+                className="text-brand-700 font-bold underline underline-offset-2"
+              >
+                Tanya admin
+                <span className="sr-only"> lewat WhatsApp (buka di tab baru)</span>
               </a>
-            </section>
+            </p>
           </>
         ) : (
           <EmptyState
             title="Cabang tidak ditemukan"
-            icon={MapPin}
             actions={
               hiddenByCity ? (
                 <>
                   <button type="button" onClick={showAllCities} className="btn-primary">
                     Cari di semua kota ({found.length})
                   </button>
-                  <a href={waLink(WA_GENERAL)} target="_blank" rel="noopener" className="btn-ghost">
-                    <WhatsAppIcon className="size-4" /> Tanya via WhatsApp
-                  </a>
                 </>
               ) : (
                 <>
@@ -335,6 +395,139 @@ export default function Branches() {
         )}
       </div>
     </>
+  )
+}
+
+// Keeps keyboard focus clear of the sticky header (html scroll-padding) and the search band below it
+const UNDER_BAND = 'scroll-mt-[var(--band,86px)] [@media(max-height:30rem)]:scroll-mt-0'
+
+// One branch: name and a one-line address on a plain row; rows are split by hairlines.
+//   Desktop: clicking the row picks which branch the map panel shows (aria-pressed); directions and
+//   WhatsApp live once, in that panel.
+//   Phones/tablets: an "Arah" text link on the right; tapping the row opens its map and actions in
+//   place (aria-expanded), where the link gives way to the panel's own directions button. The iframe
+//   only exists while the row is open.
+function BranchRow({ b, desktop, active, onSelect }) {
+  const panel = `peta-${b.slug}`
+  const text = (
+    <>
+      <span className={`block text-[15px] leading-snug font-bold ${active ? 'text-brand-700' : 'text-ink'}`}>
+        {b.name}
+      </span>
+      <span className="text-muted mt-0.5 block truncate text-[13px]">{b.short}</span>
+    </>
+  )
+
+  if (desktop) {
+    return (
+      <li id={`cabang-${b.slug}`} className={`${UNDER_BAND} ${active ? 'bg-brand-50' : 'hover:bg-slate-50'}`}>
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-pressed={active}
+          aria-controls="peta-cabang"
+          className={`focus-ring-inset block w-full px-4 py-3.5 text-left ${UNDER_BAND}`}
+        >
+          {text}
+        </button>
+      </li>
+    )
+  }
+
+  return (
+    <li id={`cabang-${b.slug}`} className={`${UNDER_BAND} ${active ? 'bg-brand-50' : ''}`}>
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-expanded={active}
+          aria-controls={panel}
+          className={`focus-ring-inset min-w-0 flex-1 py-3.5 pr-2 pl-4 text-left ${UNDER_BAND}`}
+        >
+          {text}
+        </button>
+        {b.maps && !active && (
+          <a
+            href={b.maps}
+            target="_blank"
+            rel="noopener"
+            className="focus-ring-inset text-brand-700 inline-flex min-h-11 shrink-0 items-center self-stretch px-4 text-[13px] font-bold hover:underline"
+          >
+            Arah
+            <span className="sr-only"> ke {b.name} (buka di tab baru)</span>
+          </a>
+        )}
+      </div>
+
+      <div id={panel} hidden={!active}>
+        {active && (
+          <div className="px-4 pb-4">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-slate-100">
+              <MapFrame b={b} />
+            </div>
+            <p className="text-muted mt-3 text-[13px] leading-snug break-words">{b.address}</p>
+            <BranchActions b={b} className="mt-3 grid grid-cols-2 gap-2" />
+          </div>
+        )}
+      </div>
+    </li>
+  )
+}
+
+// Keyed by branch so a new branch mounts a fresh iframe: changing src on the same iframe would add
+// an entry to the page's history and make Back step through old maps
+function MapFrame({ b }) {
+  return (
+    <iframe
+      key={b.slug}
+      src={mapSrc(b)}
+      loading="lazy"
+      title={`Peta ${b.name}`}
+      referrerPolicy="no-referrer-when-downgrade"
+      className="absolute inset-0 size-full border-0"
+    />
+  )
+}
+
+function BranchActions({ b, className }) {
+  return (
+    <div className={className}>
+      {b.maps && (
+        <a href={b.maps} target="_blank" rel="noopener" className="btn-primary">
+          Petunjuk arah
+          <ExternalLink className="size-4" aria-hidden />
+          <span className="sr-only"> (buka di tab baru)</span>
+        </a>
+      )}
+      <a href={waStock(b)} target="_blank" rel="noopener" className="btn-wa">
+        <WhatsAppIcon className="size-4" />
+        <span>
+          Tanya stok<span className="max-sm:sr-only"> di cabang ini</span>
+        </span>
+        <span className="sr-only"> (buka di tab baru)</span>
+      </a>
+    </div>
+  )
+}
+
+// Desktop map: sticks below the header (108px at lg) and the search band, filling the rest of the
+// viewport. On very short viewports the header and band scroll away, so it does too.
+function MapPanel({ b }) {
+  return (
+    <aside
+      id="peta-cabang"
+      aria-label="Peta cabang terpilih"
+      className="card sticky top-[calc(108px+var(--band,86px)+16px)] flex h-[calc(100dvh-108px-var(--band,86px)-32px)] min-h-[26rem] flex-col overflow-hidden [@media(max-height:30rem)]:static [@media(max-height:30rem)]:h-auto"
+    >
+      <div className="relative min-h-72 flex-1 bg-slate-100">
+        <MapFrame b={b} />
+      </div>
+      <div className="border-line border-t p-4">
+        <h2 className="text-ink text-base font-bold">{b.name}</h2>
+        <p className="text-muted mt-1 text-[13px] leading-snug">{b.address}</p>
+        <BranchActions b={b} className="mt-3 flex flex-wrap gap-2" />
+      </div>
+    </aside>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { usePost, usePosts } from '../lib/data'
 import { formatDate, readableTitle } from '../lib/format'
@@ -9,6 +9,8 @@ import Img from '../components/Img'
 import Seo from '../components/Seo'
 import PageLoader from '../components/PageLoader'
 import ErrorState from '../components/ErrorState'
+import { WhatsAppIcon } from '../components/icons'
+import { topicOf } from './Articles'
 import NotFound from './NotFound'
 
 export default function ArticleDetail() {
@@ -51,8 +53,13 @@ export default function ArticleDetail() {
   const hero = post.cover?.srcset ? post.cover : (post.coverLarge ?? post.cover)
   const heroRatio = hero?.w && hero?.h ? hero.w / hero.h : 1
   const description = excerpt(post)
-  const showCategory = new Set(all?.map((p) => p.category)).size > 1
-  const more = all?.filter((a) => a.slug !== slug).slice(0, 3) ?? []
+  const topic = topicOf(post.title)
+  // Same topic first, then the newest of the rest (the list is already newest first)
+  const others = all?.filter((a) => a.slug !== slug) ?? []
+  const more = [
+    ...others.filter((a) => topicOf(a.title) === topic),
+    ...others.filter((a) => topicOf(a.title) !== topic),
+  ].slice(0, 3)
 
   // The body is raw HTML, so its internal links are plain <a> tags; send them through the
   // router instead of reloading the whole app.
@@ -85,17 +92,28 @@ export default function ArticleDetail() {
       <article className="band">
         <div className="container-page max-w-3xl py-4 sm:py-6">
           <Breadcrumbs items={[{ to: '/artikel-review', label: 'Artikel' }, { label: post.title }]} />
-          {showCategory && post.category && <p className="text-brand-700 text-[13px] font-bold">{post.category}</p>}
           <h1
             ref={headingRef}
             tabIndex={-1}
-            className="text-ink mt-1 text-xl leading-snug font-extrabold text-balance focus:outline-none sm:text-2xl"
+            className="text-ink text-xl leading-snug font-extrabold text-balance focus:outline-none sm:text-2xl"
           >
             {readableTitle(post.title)}
           </h1>
-          <time dateTime={post.date} className="text-muted mt-1.5 block text-[13px]">
-            {formatDate(post.date)}
-          </time>
+          <p className="text-muted mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[13px]">
+            <Link
+              to={`/artikel-review?topik=${topic.id}`}
+              aria-label={`Topik ${topic.label}`}
+              // 44px tall hit area on touch without making the meta line taller
+              className="text-brand-700 relative font-bold hover:underline pointer-coarse:before:absolute pointer-coarse:before:-inset-x-2 pointer-coarse:before:-inset-y-3 pointer-coarse:before:content-['']"
+            >
+              {topic.label}
+            </Link>
+            <span aria-hidden>·</span>
+            <time dateTime={post.date}>{formatDate(post.date)}</time>
+            <span aria-hidden>·</span>
+            <span>{body.minutes} menit baca</span>
+          </p>
+          <ShareRow title={readableTitle(post.title)} />
           {/* Most covers are square posters: capped in height and centred on a tinted band (never
               cropped) so the opening paragraph still shows on tablets and desktops. */}
           {hero && (
@@ -112,9 +130,12 @@ export default function ArticleDetail() {
           )}
           {/* Article HTML comes from our own WordPress snapshot (scripts/scrape.mjs strips scripts/iframes). */}
           <div className="prose-cs mt-5" onClick={onBodyClick} dangerouslySetInnerHTML={{ __html: body.html }} />
-          <Link to="/artikel-review" className="btn-ghost mt-6">
-            Semua artikel
-          </Link>
+          {/* "Baca juga" below already links to all articles */}
+          {!more.length && (
+            <Link to="/artikel-review" className="btn-ghost mt-6">
+              Semua artikel
+            </Link>
+          )}
         </div>
       </article>
 
@@ -133,9 +154,11 @@ export default function ArticleDetail() {
                       <Img img={a.cover} sizes="64px" alt="" className="aspect-square w-full object-contain" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <time dateTime={a.date} className="text-muted block text-xs">
-                        {formatDate(a.date)}
-                      </time>
+                      <p className="text-muted flex flex-wrap items-center gap-x-1.5 text-xs">
+                        <span className="text-brand-700 font-bold">{topicOf(a.title).label}</span>
+                        <span aria-hidden>·</span>
+                        <time dateTime={a.date}>{formatDate(a.date)}</time>
+                      </p>
                       <h3 className="group-hover:text-brand-700 text-ink mt-0.5 line-clamp-3 text-sm font-bold">
                         {readableTitle(a.title)}
                       </h3>
@@ -153,6 +176,66 @@ export default function ArticleDetail() {
 
 const HERO_MAX_H = 420
 
+// "Bagikan ke WhatsApp" opens WhatsApp's chat picker with the title and link; "Salin link" copies the
+// address. The result is announced politely and cleared after 2 seconds.
+function ShareRow({ title }) {
+  const [status, setStatus] = useState(null)
+  const timer = useRef(0)
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  // The address without ?query or #hash, so the shared link points at the article itself
+  const pageUrl = window.location.origin + window.location.pathname
+  const waHref = `https://wa.me/?text=${encodeURIComponent(`${title}\n${pageUrl}`)}`
+
+  const copy = async () => {
+    const ok = await copyText(window.location.href)
+    setStatus(ok ? 'ok' : 'fail')
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setStatus(null), 2000)
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <a href={waHref} target="_blank" rel="noopener" className="btn-ghost !px-3.5 !text-[13px]">
+        <WhatsAppIcon className="size-4" /> Bagikan ke WhatsApp
+        <span className="sr-only"> (buka di tab baru)</span>
+      </a>
+      <button type="button" onClick={copy} className="btn-ghost !px-3.5 !text-[13px]">
+        Salin link
+      </button>
+      <span
+        aria-live="polite"
+        className={`text-[13px] font-semibold ${status === 'fail' ? 'text-accent-600' : 'text-wa-700'}`}
+      >
+        {status === 'ok' ? 'Link tersalin' : status === 'fail' ? 'Gagal menyalin link' : ''}
+      </span>
+    </div>
+  )
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // No async clipboard (older browsers, plain-http pages): copy from a hidden field instead
+    const field = document.createElement('textarea')
+    field.value = text
+    field.setAttribute('readonly', '')
+    field.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.append(field)
+    field.select()
+    let ok = false
+    try {
+      ok = document.execCommand('copy')
+    } catch {
+      // stays false
+    }
+    field.remove()
+    return ok
+  }
+}
+
 const stem = (src = '') =>
   src
     .split('/')
@@ -167,7 +250,14 @@ function prepareBody(post) {
   return {
     html: dropRepeatedAlts(html, title),
     coverAlt: plain(coverAlt) === title ? '' : coverAlt,
+    minutes: readingMinutes(html),
   }
+}
+
+// About 200 words a minute, never less than one minute.
+function readingMinutes(html) {
+  const words = decode(html.replace(/<[^>]+>/g, ' ')).match(/[\p{L}\p{N}]+/gu)?.length ?? 0
+  return Math.max(1, Math.round(words / 200))
 }
 
 // Most posts repeat their cover as the first picture of the body. Keep the sharp, eagerly

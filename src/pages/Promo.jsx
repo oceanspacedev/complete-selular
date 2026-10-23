@@ -19,64 +19,60 @@ const tileImage = (it) =>
 export default function Promo() {
   const { items } = site.promos
   const [open, setOpen] = useState(null) // index of the poster in the lightbox
-  // With an odd count the first (newest) poster spans both phone columns, so no tile is left alone.
-  const featureFirst = items.length % 2 === 1
 
   return (
     <>
       <Seo title="Promo" description="Promo dan penawaran terbaru Complete Selular." />
-      <PageHeader
-        title="Yuk Ikutin Promonya!"
-        crumbs={[{ label: 'Promo' }]}
-        subtitle="Buat kamu yang ingin upgrade smartphone, berikut promo yang tersedia."
-      >
-        <a
-          href={waLink('Halo admin Complete Selular, bagaimana cara mendapatkan promo yang sedang berlangsung?')}
-          target="_blank"
-          rel="noopener"
-          className="btn-wa mt-3"
-        >
-          <WhatsAppIcon className="size-4" /> Cara dapetin promo
-          <span className="sr-only"> (buka di tab baru)</span>
-        </a>
-      </PageHeader>
-      <div className="band mt-2 mb-2 py-4 sm:py-6">
-        <div className="container-page">
-          {items.length ? (
-            // A grid (not CSS columns) keeps reading order, tab order and visual order the same.
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-              {items.map((it, i) => {
-                const wide = featureFirst && i === 0
-                return (
-                  <li key={it.thumb.src} className={wide ? 'col-span-2 sm:col-span-1' : undefined}>
-                    <button
-                      type="button"
-                      onClick={() => setOpen(i)}
-                      className="group border-line hover:border-brand-300 flex h-full w-full flex-col overflow-hidden rounded-lg border bg-white text-left transition-colors"
-                      aria-label={`Lihat ${it.title ? `promo ${i + 1}: ${it.title}` : `poster promo ${i + 1}`}`}
-                    >
-                      {/* Posters come in A-series (1:1.41) and 2:3 shapes; one shared frame keeps the rows
-                        even, and object-contain shows each poster edge to edge, text included. */}
-                      <span className="block overflow-hidden bg-slate-100">
-                        <Img
-                          img={tileImage(it)}
-                          eager={i < 3}
-                          sizes={`(min-width: 1200px) 224px, (min-width: 1024px) 19vw, (min-width: 640px) 31vw, ${wide ? '100vw' : '50vw'}`}
-                          alt=""
-                          className="aspect-[5/7] w-full object-contain"
-                        />
-                      </span>
-                      {it.title && (
-                        <span className="group-hover:text-brand-700 text-ink border-line line-clamp-2 border-t px-3 py-2 text-[13px] font-bold">
-                          {it.title}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
+      <PageHeader title="Promo" />
+      {items.length ? (
+        <>
+          <PromoSpotlight item={items[0]} onOpen={() => setOpen(0)} />
+          {items.length > 1 && (
+            <section aria-labelledby="promo-lain" className="band mt-2 mb-2 py-5 sm:py-7">
+              <div className="container-page">
+                <h2 id="promo-lain" className="text-ink mb-4 text-base font-extrabold sm:text-xl">
+                  Promo lainnya
+                </h2>
+                {/* A grid (not CSS columns) keeps reading order, tab order and visual order the same. */}
+                <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4">
+                  {items.slice(1).map((it, n) => {
+                    const i = n + 1
+                    return (
+                      <li key={it.thumb.src}>
+                        <button
+                          type="button"
+                          onClick={() => setOpen(i)}
+                          className="group block w-full text-left"
+                          aria-label={`Lihat ${it.title ? `promo ${i + 1}: ${it.title}` : `poster promo ${i + 1}`}`}
+                        >
+                          {/* Posters come in A-series and 2:3 shapes; one frame keeps rows even and
+                              object-contain shows each poster edge to edge, text included. */}
+                          <span className="card block overflow-hidden transition-shadow duration-200 group-hover:shadow-[var(--shadow-lift)]">
+                            <Img
+                              img={tileImage(it)}
+                              eager={n < 4}
+                              sizes="(min-width: 1200px) 280px, (min-width: 1024px) 23vw, (min-width: 640px) 31vw, 50vw"
+                              alt=""
+                              className="aspect-[5/7] w-full bg-white object-contain"
+                            />
+                          </span>
+                          {it.title && (
+                            <span className="group-hover:text-brand-700 text-ink mt-2 line-clamp-2 block text-[13px] leading-snug font-bold sm:text-sm">
+                              {it.title}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        <div className="band mt-2 mb-2 py-4 sm:py-6">
+          <div className="container-page">
             <EmptyState
               title="Belum ada promo"
               icon={Tag}
@@ -89,11 +85,60 @@ export default function Promo() {
             >
               Promo terbaru akan tampil di sini. Tanyakan penawaran hari ini ke admin kami.
             </EmptyState>
-          )}
+          </div>
         </div>
-      </div>
+      )}
       <Lightbox items={items} index={open} onChange={setOpen} onClose={() => setOpen(null)} />
     </>
+  )
+}
+
+// The newest promo leads: the poster big, what it offers in words, and the two things to do next
+function PromoSpotlight({ item, onOpen }) {
+  return (
+    <section aria-labelledby="promo-terbaru" className="band mt-2 py-5 sm:py-7">
+      <div className="container-page grid items-center gap-5 md:grid-cols-[minmax(0,18rem)_1fr] md:gap-10 lg:grid-cols-[minmax(0,22rem)_1fr]">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="group card mx-auto block w-full max-w-[18rem] overflow-hidden transition-shadow hover:shadow-[var(--shadow-lift)] md:max-w-none"
+          aria-label={`Perbesar poster ${item.title ?? 'promo terbaru'}`}
+        >
+          <Img
+            img={tileImage(item)}
+            priority
+            sizes="(min-width: 1024px) 352px, (min-width: 768px) 288px, 288px"
+            alt=""
+            className="aspect-[5/7] w-full bg-white object-contain"
+          />
+        </button>
+        <div className="min-w-0">
+          <p className="text-accent-600 text-sm font-bold">Promo terbaru</p>
+          <h2
+            id="promo-terbaru"
+            className="text-ink mt-1 text-2xl leading-tight font-extrabold text-balance sm:text-3xl"
+          >
+            {item.title ?? 'Promo spesial bulan ini'}
+          </h2>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button type="button" onClick={onOpen} className="btn-primary">
+              Lihat poster
+            </button>
+            <a
+              href={waLink(
+                `Halo admin Complete Selular, saya mau ikut promo "${item.title ?? 'terbaru'}". Bagaimana caranya?`,
+              )}
+              target="_blank"
+              rel="noopener"
+              className="btn-wa"
+            >
+              <WhatsAppIcon className="size-4" /> Tanya promo ini
+              <span className="sr-only"> (buka di tab baru)</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 

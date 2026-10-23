@@ -10,7 +10,7 @@ import Seo from '../components/Seo'
 const byName = [...brands].sort((a, b) => a.name.localeCompare(b.name))
 
 export default function Brands() {
-  const { data: models, error } = useModels()
+  const { data: models } = useModels()
 
   // Counted from the listings actually loaded, so the number matches the cards on the brand page
   const counts = useMemo(() => {
@@ -29,7 +29,7 @@ export default function Brands() {
         title="Semua Brand"
         description="Belanja HP dari brand favoritmu: Samsung, Apple, Oppo, Vivo, Xiaomi, dan lainnya."
       />
-      <PageHeader title="Semua Brand" subtitle="Pilih brand favoritmu dan temukan seri terbarunya." />
+      <PageHeader title="Semua Brand" />
       <div className="container-page py-3 sm:py-4">
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
           {listed.map((b) => {
@@ -51,12 +51,6 @@ export default function Brands() {
                   </div>
                   <div className="border-line border-t px-2 py-2">
                     <p className="group-hover:text-brand-700 text-ink truncate text-[13px] font-bold">{b.name}</p>
-                    {/* Same line height while loading so the grid does not jump; nothing if the list failed */}
-                    {counts ? (
-                      <p className="text-muted text-xs">{counts[b.slug]} produk</p>
-                    ) : (
-                      !error && <span className="skeleton mx-auto my-0.5 block h-3 w-12 rounded" aria-hidden />
-                    )}
                   </div>
                 </Link>
               </li>

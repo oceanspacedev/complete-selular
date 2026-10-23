@@ -150,6 +150,15 @@ export function productKind(name = '') {
   return 'phone'
 }
 
+// The kinds above in shop order, with their labels (Katalog's "Jenis" filter, the home shortcuts)
+export const KINDS = [
+  { id: 'phone', label: 'HP' },
+  { id: 'tablet', label: 'Tablet' },
+  { id: 'wearable', label: 'Jam pintar' },
+  { id: 'audio', label: 'Audio' },
+  { id: 'accessory', label: 'Aksesoris' },
+]
+
 // Key features shown as tiles on the product page, with Indonesian labels.
 export function productFeatures(features = [], kind = 'phone') {
   return features
@@ -316,7 +325,7 @@ export function parseColors(specs = []) {
 
 // A few WordPress titles are typed in ALL CAPS; set them in title case like the others.
 const SMALL_WORDS = new Set(['dan', 'di', 'ke', 'dari', 'yang', 'untuk', 'dengan', 'pada', 'atau', 'vs'])
-const ACRONYMS = new Set(['AI', 'HP', 'NFC', 'OLED', 'AMOLED', 'LCD', 'RAM', 'ROM', 'USB', 'GPS', 'TWS'])
+const ACRONYMS = new Set(['AI', 'FE', 'HP', 'NFC', 'OLED', 'AMOLED', 'LCD', 'RAM', 'ROM', 'USB', 'GPS', 'TWS'])
 const SPECIAL = { IPHONE: 'iPhone', IPAD: 'iPad', IOS: 'iOS' }
 export function readableTitle(title) {
   if (title !== title.toUpperCase() || !/[A-Z]{4}/.test(title)) return title
@@ -331,3 +340,12 @@ export function readableTitle(title) {
     })
     .join(' ')
 }
+
+// Price filter ranges shared by the catalogue (?harga=) and the Home budget tiles
+export const PRICE_RANGES = [
+  { id: 'u2', label: 'Di bawah 2 juta', min: 0, max: 2e6 },
+  { id: '2-5', label: '2 – 5 juta', min: 2e6, max: 5e6 },
+  { id: '5-10', label: '5 – 10 juta', min: 5e6, max: 10e6 },
+  { id: '10-20', label: '10 – 20 juta', min: 10e6, max: 20e6 },
+  { id: 'o20', label: 'Di atas 20 juta', min: 20e6, max: Infinity },
+]

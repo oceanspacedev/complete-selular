@@ -93,7 +93,7 @@ export const compare = {
       return { ok: false, reason: 'full', count: slugs.length }
     }
     write([...slugs, slug])
-    notify(`${label(name)} ditambahkan ke perbandingan (${slugs.length} dari ${MAX}).`)
+    notify(`${label(name)} ditambahkan ke perbandingan (${slugs.length} dari ${MAX}).`, 'added')
     return { ok: true, added: true, count: slugs.length }
   },
   // Returns the previous list so callers can offer "Urungkan" via compare.restore().

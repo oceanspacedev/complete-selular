@@ -1,0 +1,47 @@
+[
+  {
+    "id": "phone",
+    "label": "HP",
+    "img": {
+      "src": "/img/kinds/phone.webp",
+      "w": 200,
+      "h": 200
+    }
+  },
+  {
+    "id": "tablet",
+    "label": "Tablet",
+    "img": {
+      "src": "/img/kinds/tablet.webp",
+      "w": 200,
+      "h": 200
+    }
+  },
+  {
+    "id": "wearable",
+    "label": "Jam pintar",
+    "img": {
+      "src": "/img/kinds/wearable.webp",
+      "w": 200,
+      "h": 200
+    }
+  },
+  {
+    "id": "audio",
+    "label": "Audio",
+    "img": {
+      "src": "/img/kinds/audio.webp",
+      "w": 200,
+      "h": 200
+    }
+  },
+  {
+    "id": "accessory",
+    "label": "Aksesoris",
+    "img": {
+      "src": "/img/kinds/accessory.webp",
+      "w": 200,
+      "h": 200
+    }
+  }
+]

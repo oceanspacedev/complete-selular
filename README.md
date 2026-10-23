@@ -24,6 +24,8 @@ Script ini mengambil:
 
 Semua gambar diunduh lalu dikonversi ke WebP di `public/img/`. Response HTTP disimpan di cache `.cache/`, jadi re-run berjalan cepat. Pakai `--refresh` untuk mengambil ulang.
 
+Setelah scrape, jalankan `npm run banners` untuk membuat ulang banner carousel di Beranda (produk terbaru, cicilan, cabang). Harga, partner cicilan, jumlah cabang, dan rating diambil dari data hasil scrape. Hasilnya `public/img/banners/house-*.webp` dan `src/data/banners.json`. Script ini memakai font Segoe UI, jadi jalankan di Windows.
+
 | Lokasi | Isi |
 | --- | --- |
 | `src/data/*.json` | Data kecil yang ikut di-bundle: site, brand, cabang |

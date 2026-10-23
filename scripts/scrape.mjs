@@ -55,6 +55,8 @@ async function fetchText(url, { retries = 3 } = {}) {
       const res = await fetch(url, { headers: { 'user-agent': 'CompleteSelular-Redesign-Snapshot/1.0' } })
       if (!res.ok) throw new Error(`${res.status} ${url}`)
       const text = await res.text()
+      // The host can answer with a reCAPTCHA wall (HTTP 200); never cache that as the page
+      if (text.includes('<title>Bot Verification</title>')) throw new Error(`bot verification page for ${url}`)
       await fs.mkdir(path.dirname(file), { recursive: true })
       await fs.writeFile(file, text)
       await sleep(150)
@@ -535,7 +537,8 @@ async function scrapeProduct(p) {
   const name = accessory ? title : titleCapacity(title, p.slug, features)
 
   // The spec sheet's "Price" row is typed separately from the real price, so it drifts (and sometimes
-  // is an unrendered "{{loopData.data.Harga}}"). The product price is the only price we publish.
+  // is an unrendered "{{loopData.data.Harga}}"). The product price wins; the spec row is only used
+  // when the admin left the product price empty (the live page then shows the price only in the specs).
   let specPrice = null
   const specs = $('.aps-group')
     .map((_, g) => {
@@ -562,10 +565,11 @@ async function scrapeProduct(p) {
     .get()
     .filter((g) => g.group && g.rows.length)
 
-  const price = parsePrice(
+  const productPrice = parsePrice(
     root.find('.aps-product-price meta[itemprop="price"]').attr('content') ??
       root.find('.aps-product-price .aps-price-value').first().text(),
   )
+  const price = productPrice ?? specPrice
   if (price && specPrice && price !== specPrice) {
     console.warn(`  ! ${p.slug}: spec sheet says Rp${specPrice}, product price is Rp${price}`)
   }

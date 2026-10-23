@@ -1,8 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import Seo from '../components/Seo'
 import { SearchForm } from '../components/Layout'
-import { WhatsAppIcon } from '../components/icons'
-import { waLink } from '../lib/wa'
 
 // Also rendered inline by detail pages when the slug is unknown. For those, the slug is usually the
 // product or brand the shopper wanted, so it pre-fills the search box.
@@ -40,18 +38,6 @@ export default function NotFound() {
             Lihat Katalog
           </Link>
         </div>
-        <p className="text-muted mt-5 text-sm">
-          Butuh bantuan?{' '}
-          <a
-            href={waLink('Halo admin Complete Selular, saya tidak menemukan halaman yang saya cari di website.')}
-            target="_blank"
-            rel="noopener"
-            className="text-wa-700 inline-flex items-center gap-1 font-bold underline-offset-2 hover:underline pointer-coarse:min-h-11"
-          >
-            <WhatsAppIcon className="size-4" />
-            Tanya admin via WhatsApp
-          </a>
-        </p>
       </div>
     </div>
   )

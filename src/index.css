@@ -49,14 +49,21 @@
     scrollbar-gutter: stable;
     /* Keep keyboard-focused elements clear of the sticky header and, on mobile,
        the fixed bottom nav + WhatsApp button stacked above it. */
-    scroll-padding-top: 7.5rem;
+    /* Pinned header height: 100px on phones (logo + search rows), 64px from sm, 108px with the nav strip from lg */
+    scroll-padding-top: 7rem;
     scroll-padding-bottom: calc(9rem + env(safe-area-inset-bottom));
+    @media (width >= 40rem) {
+      scroll-padding-top: 5rem;
+    }
     @media (width >= 64rem) {
+      scroll-padding-top: 7.5rem;
       scroll-padding-bottom: 6rem;
     }
   }
   body {
     @apply bg-canvas text-ink font-sans antialiased;
+    /* Never let the whole page pan sideways; clip (unlike hidden) keeps the sticky header working */
+    overflow-x: clip;
   }
   :focus-visible {
     @apply outline-brand-500 outline-2 outline-offset-2;
@@ -146,7 +153,7 @@
   .site-fab {
     display: none;
   }
-  .site-footer {
+  .site-footer > :last-child {
     padding-bottom: 0;
   }
 }

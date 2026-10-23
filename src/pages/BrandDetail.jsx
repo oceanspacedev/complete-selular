@@ -54,7 +54,6 @@ export default function BrandDetail() {
             {brand.name}
           </span>
         }
-        subtitle={`Daftar harga & spesifikasi HP ${brand.name} terbaru.`}
         crumbs={[{ to: '/semua-brand', label: 'Brand' }, { label: brand.name }]}
       />
       <div ref={contentRef} className="container-page py-3 sm:py-4">

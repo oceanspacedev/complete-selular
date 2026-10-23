@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "samsung",
+    "name": "Samsung",
+    "img": {
+      "src": "/img/brand-tiles/samsung.webp",
+      "w": 320,
+      "h": 320
+    }
+  },
+  {
+    "slug": "xiaomi",
+    "name": "Xiaomi",
+    "img": {
+      "src": "/img/brand-tiles/xiaomi.webp",
+      "w": 320,
+      "h": 320
+    }
+  },
+  {
+    "slug": "vivo",
+    "name": "Vivo",
+    "img": {
+      "src": "/img/brand-tiles/vivo.webp",
+      "w": 320,
+      "h": 320
+    }
+  },
+  {
+    "slug": "oppo",
+    "name": "Oppo",
+    "img": {
+      "src": "/img/brand-tiles/oppo.webp",
+      "w": 320,
+      "h": 320
+    }
+  }
+]

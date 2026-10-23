@@ -1,12 +1,10 @@
 import { Link } from 'react-router-dom'
 import site from '../data/site.json'
 import { brands } from '../data/brands.json'
-import { waLink } from '../lib/wa'
 import Breadcrumbs from '../components/Breadcrumbs'
 import SectionHeader from '../components/SectionHeader'
 import Img from '../components/Img'
 import Seo from '../components/Seo'
-import { WhatsAppIcon } from '../components/icons'
 
 // Same rhythm as Home: white bands on the grey canvas, 8px apart
 const SECTION = 'band mt-2 py-6 sm:py-10'
@@ -18,9 +16,16 @@ const VALUE_NOTES = {
   terkini: 'Seri terbaru dari brand ternama hadir lebih cepat di toko kami.',
 }
 
+// "Sejak 2009, … terkemuka. Complete Selular telah …" → lead sentence + the rest
+function splitLead(text = '') {
+  const m = text.match(/^(.+?[.!?])\s+(.*)$/s)
+  return m ? { lead: m[1], rest: m[2] } : { lead: text, rest: '' }
+}
+
 export default function About() {
   const { about, rating } = site
   const values = about.values ?? []
+  const intro = splitLead(about.intro)
   const missions = about.missions ?? []
   const logos = brands.filter((b) => site.brandLogos[b.slug]).sort((a, b) => b.total - a.total)
   const stats = [
@@ -39,7 +44,6 @@ export default function About() {
           <div>
             <Breadcrumbs onDark items={[{ label: 'Tentang Kami' }]} />
             <h1 className="mt-2 text-2xl leading-tight font-extrabold sm:text-4xl">Tentang Complete Selular</h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">{about.tagline}</p>
             <dl className="mt-6 grid max-w-lg grid-cols-3 divide-x divide-white/15 border-y border-white/15 py-4">
               {stats.map(([value, label]) => (
                 <div key={label} className="flex flex-col px-3 first:pl-0">
@@ -62,50 +66,53 @@ export default function About() {
       </section>
 
       <section className={SECTION}>
-        <div className="container-page grid gap-4 lg:grid-cols-[16rem_1fr] lg:gap-12">
-          <h2 className="text-ink text-lg font-extrabold sm:text-xl">Cerita kami</h2>
-          <p className="text-ink max-w-[65ch] text-[15px] leading-7">{about.intro}</p>
+        <div className="container-page max-w-4xl">
+          <p className="text-brand-600 text-sm font-bold">Cerita kami</p>
+          {/* Editorial opening: the first sentence as the lead, the rest as body text */}
+          <p className="text-ink mt-2 text-xl leading-snug font-extrabold text-balance sm:text-2xl">{intro.lead}</p>
+          {intro.rest && <p className="text-muted mt-3 text-[15px] leading-7 sm:text-base">{intro.rest}</p>}
         </div>
       </section>
 
-      {(about.vision || missions.length > 0) && (
+      {about.vision && (
         <section className={SECTION}>
-          <div className="container-page grid gap-8 lg:grid-cols-[16rem_1fr] lg:gap-12">
-            {about.vision && (
-              <>
-                <h2 className="text-ink text-lg font-extrabold sm:text-xl">Visi</h2>
-                <blockquote className="border-brand-600 text-ink max-w-[60ch] border-l-4 pl-4 text-lg leading-snug font-bold sm:text-xl">
-                  {about.vision}
-                </blockquote>
-              </>
-            )}
-            {missions.length > 0 && (
-              <>
-                <h2 className="text-ink text-lg font-extrabold sm:text-xl">Misi</h2>
-                <ol className="grid gap-x-6 sm:grid-cols-2">
-                  {missions.map((m, i) => (
-                    <li key={m} className="border-line flex gap-3 border-t py-3 text-sm leading-relaxed">
-                      <span className="text-brand-600 w-6 shrink-0 font-extrabold tabular-nums">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <span className="text-ink">{m}</span>
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
+          <div className="container-page">
+            <figure className="bg-brand-50 rounded-lg px-5 py-8 text-center sm:px-10 sm:py-12">
+              <figcaption className="text-brand-700 text-sm font-bold">Visi kami</figcaption>
+              <blockquote className="text-ink mx-auto mt-3 max-w-3xl text-xl leading-snug font-extrabold text-balance sm:text-3xl">
+                “{about.vision}”
+              </blockquote>
+            </figure>
+          </div>
+        </section>
+      )}
+
+      {missions.length > 0 && (
+        <section className={SECTION}>
+          <div className="container-page">
+            <h2 className="text-ink mb-4 text-lg font-extrabold sm:text-xl">Misi kami</h2>
+            <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {missions.map((m, i) => (
+                <li key={m} className="border-line rounded-lg border bg-white p-4">
+                  <span className="text-brand-600 block text-2xl leading-none font-extrabold tabular-nums" aria-hidden>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <p className="text-ink mt-3 text-sm leading-relaxed">{m}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
       )}
 
       {values.length > 0 && (
         <section className={SECTION}>
-          <div className="container-page grid gap-4 lg:grid-cols-[16rem_1fr] lg:gap-12">
-            <h2 className="text-ink text-lg font-extrabold sm:text-xl">Nilai kami</h2>
+          <div className="container-page">
+            <h2 className="text-ink mb-4 text-lg font-extrabold sm:text-xl">Nilai kami</h2>
             <ul className="grid gap-3 sm:grid-cols-3">
               {values.map((v) => (
-                <li key={v} className="border-line rounded-lg border p-4">
-                  <p className="text-brand-700 text-base font-extrabold">{v}</p>
+                <li key={v} className="border-line rounded-lg border p-4 sm:p-5">
+                  <p className="text-brand-700 text-lg font-extrabold">{v}</p>
                   {VALUE_NOTES[v.toLowerCase()] && (
                     <p className="text-muted mt-1 text-sm leading-relaxed">{VALUE_NOTES[v.toLowerCase()]}</p>
                   )}
@@ -138,21 +145,10 @@ export default function About() {
 
       <section className="bg-navy-800 mt-2 text-white">
         <div className="container-page flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:py-8">
-          <div>
-            <h2 className="text-lg font-extrabold sm:text-xl">Mampir ke toko kami</h2>
-            <p className="mt-1 text-sm text-white/80">
-              Coba langsung produknya di salah satu dari {site.branchCount} cabang Complete Selular.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/daftar-toko-cabang" className="btn text-navy-800 bg-white hover:bg-white/90">
-              Cari cabang terdekat
-            </Link>
-            <a href={waLink()} target="_blank" rel="noopener" className="btn-wa">
-              <WhatsAppIcon className="size-4" /> Chat via WhatsApp
-              <span className="sr-only"> (buka di tab baru)</span>
-            </a>
-          </div>
+          <h2 className="text-lg font-extrabold sm:text-xl">Mampir ke toko kami</h2>
+          <Link to="/daftar-toko-cabang" className="btn text-navy-800 shrink-0 bg-white hover:bg-white/90">
+            Cari cabang terdekat
+          </Link>
         </div>
       </section>
     </>
